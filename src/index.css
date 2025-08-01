@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* MIV Global Technology Design System - White, Black & Gold Brand */
+
+@layer base {
+  :root {
+    /* Brand Colors - White, Black, Gold */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    
+    /* Gold Accent Colors */
+    --gold: 45 100% 51%;
+    --gold-light: 48 100% 67%;
+    --gold-dark: 42 100% 35%;
+    --gold-muted: 45 25% 88%;
+    
+    /* Semantic Colors based on brand */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 45 100% 51%;
+    --accent-foreground: 0 0% 0%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 45 100% 51%;
+
+    --radius: 0.75rem;
+    
+    /* Custom gradients and effects */
+    --gradient-gold: linear-gradient(135deg, hsl(var(--gold-light)), hsl(var(--gold)));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--muted-foreground)));
+    --shadow-gold: 0 10px 40px -10px hsl(var(--gold) / 0.3);
+    --shadow-elegant: 0 20px 60px -10px hsl(var(--foreground) / 0.1);
+  }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 45 100% 51%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 45 100% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-['Inter',sans-serif];
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Button variants */
+  .btn-gold {
+    @apply bg-gradient-to-r from-gold-light to-gold text-accent-foreground 
+           shadow-[var(--shadow-gold)] hover:shadow-lg hover:scale-105 
+           transition-all duration-300;
+  }
+  
+  .btn-outline-gold {
+    @apply border-2 border-accent text-accent bg-transparent 
+           hover:bg-accent hover:text-accent-foreground 
+           transition-all duration-300;
+  }
+  
+  /* Card effects */
+  .card-elevated {
+    @apply shadow-[var(--shadow-elegant)] hover:shadow-xl 
+           hover:-translate-y-2 transition-all duration-300;
+  }
+  
+  /* Animations */
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+  }
+  
+  .animate-slide-in-left {
+    animation: slideInLeft 0.8s ease-out forwards;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.8s ease-out forwards;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
