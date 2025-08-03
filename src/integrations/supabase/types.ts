@@ -14,7 +14,180 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          signup_date: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          signup_date?: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          signup_date?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contact_submissions: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+          phone: string | null
+          service: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+          phone?: string | null
+          service?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+          phone?: string | null
+          service?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          assigned_to: string | null
+          client_id: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          package: Database["public"]["Enums"]["subscription_plan"]
+          progress: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          package: Database["public"]["Enums"]["subscription_plan"]
+          progress?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          package?: Database["public"]["Enums"]["subscription_plan"]
+          progress?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +196,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      project_status:
+        | "pending"
+        | "planning"
+        | "in_progress"
+        | "review"
+        | "completed"
+        | "on_hold"
+      subscription_plan: "starter" | "basic" | "standard" | "premium"
+      user_role: "admin" | "team" | "client"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +331,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      project_status: [
+        "pending",
+        "planning",
+        "in_progress",
+        "review",
+        "completed",
+        "on_hold",
+      ],
+      subscription_plan: ["starter", "basic", "standard", "premium"],
+      user_role: ["admin", "team", "client"],
+    },
   },
 } as const
