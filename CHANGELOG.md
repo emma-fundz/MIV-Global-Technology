@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+<<<<<<< HEAD
 ## [v1.0.1] - 2025-08-01
 
 ### 🔧 Navigation & Responsiveness Updates
@@ -53,6 +54,8 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+=======
+>>>>>>> 3138a7e395df39d9e4684a71cff880f35f9634aa
 ## [v1.0.0] - 2025-08-01
 
 ### 🚀 Initial Release
