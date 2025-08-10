@@ -3,6 +3,8 @@ import { Phone, Mail, MapPin, MessageCircle, Calendar, Send } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const ContactSection = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +14,8 @@ const ContactSection = () => {
     service: '',
     message: ''
   });
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -20,10 +24,26 @@ const ContactSection = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('contact_submissions').insert({
+        name: formData.name,
+        email: formData.email,
+        company: formData.company || null,
+        service: formData.service || null,
+        message: formData.message,
+        status: 'new'
+      });
+      if (error) throw error;
+      toast({ title: 'Message Sent', description: 'We will get back to you shortly.' });
+      setFormData({ name: '', email: '', company: '', service: '', message: '' });
+    } catch (err: any) {
+      toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -140,8 +160,8 @@ const ContactSection = () => {
                   />
                 </div>
                 
-                <Button type="submit" className="w-full btn-gold text-lg py-3">
-                  Send Message
+                <Button type="submit" className="w-full btn-gold text-lg py-3" disabled={submitting}>
+                  {submitting ? 'Sending...' : 'Send Message'}
                   <Send className="ml-2 h-5 w-5" />
                 </Button>
               </form>

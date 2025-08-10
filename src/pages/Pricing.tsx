@@ -32,7 +32,7 @@ const Pricing = () => {
       period: '/month',
       description: 'Great for small businesses ready to grow',
       icon: <Star className="h-6 w-6" />,
-      popular: true,
+      popular: false,
       features: [
         'Professional website (5 pages)',
         'Social media management (3 platforms)',
@@ -51,7 +51,7 @@ const Pricing = () => {
       period: '/month',
       description: 'Ideal for established businesses scaling up',
       icon: <Crown className="h-6 w-6" />,
-      popular: false,
+      popular: true,
       features: [
         'Custom website with e-commerce',
         'Full social media strategy',
@@ -86,6 +86,27 @@ const Pricing = () => {
         'Mobile app development',
         'Market research & competitor analysis',
         'Team training & workshops'
+      ]
+    },
+    {
+      id: 'elite',
+      name: 'Elite',
+      price: '₦300,000',
+      period: '/month',
+      description: 'Enterprise-level transformation package',
+      icon: <Crown className="h-6 w-6" />,
+      popular: false,
+      features: [
+        'Full digital transformation',
+        'Enterprise branding solution',
+        'Ongoing marketing partnership',
+        'Complete business strategy overhaul',
+        'Year-round mentorship',
+        '24/7 priority support',
+        'Multi-platform development',
+        'Advanced integrations',
+        'Dedicated account manager',
+        'Performance guarantees'
       ]
     }
   ];
@@ -182,7 +203,7 @@ const Pricing = () => {
                       ))}
                     </ul>
                     
-                    <Link to="/auth" className="w-full">
+                    <Link to={pkg.id === 'elite' ? '/contact' : `/signup?plan=${pkg.id}`} className="w-full">
                       <Button 
                         className={`w-full ${
                           pkg.popular 
@@ -190,7 +211,7 @@ const Pricing = () => {
                             : 'bg-primary hover:bg-primary/90'
                         }`}
                       >
-                        Subscribe to {pkg.name}
+                        {pkg.id === 'elite' ? 'Contact Us' : `Choose ${pkg.name}`}
                       </Button>
                     </Link>
                   </CardContent>
@@ -300,7 +321,7 @@ const Pricing = () => {
               Join hundreds of African entrepreneurs who've scaled their businesses with MIV
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/auth">
+              <Link to="/signup">
                 <Button size="lg" variant="secondary">
                   Start Your Journey
                 </Button>

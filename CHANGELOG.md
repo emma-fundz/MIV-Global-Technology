@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.0.1] - 2025-08-10
+- Added dedicated auth routes: /login, /signup, /forgot-password
+  - Where: src/App.tsx; New file src/pages/ForgotPassword.tsx
+  - How: Routed Auth component for /login & /signup with tab preselection; implemented Supabase reset flow
+- Connected Contact form to Supabase contact_submissions
+  - Where: src/components/ContactSection.tsx
+  - How: Insert on submit via Supabase SDK with toasts and loading state
+- Updated Pricing flow and plans
+  - Where: src/pages/Pricing.tsx
+  - How: Added Elite plan, set Standard as Most Popular, buttons now link to /signup?plan=ID
+- Plan preselection on signup
+  - Where: src/pages/Auth.tsx
+  - How: Read plan from URL and set signup state; auto-select tab based on /login or /signup path
+
 ## [v2.0.0] - 2025-08-03
 
 ### 🔐 FULL BACKEND SYSTEM IMPLEMENTATION

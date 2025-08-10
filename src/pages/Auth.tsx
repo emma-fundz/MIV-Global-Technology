@@ -52,6 +52,17 @@ const Auth = () => {
     checkUser();
   }, [navigate]);
 
+  // Set tab and preselect plan from URL
+  useEffect(() => {
+    if (location.pathname === '/signup') setIsLogin(false);
+    if (location.pathname === '/login') setIsLogin(true);
+    const params = new URLSearchParams(location.search);
+    const plan = params.get('plan');
+    if (plan && ['starter','basic','standard','premium'].includes(plan)) {
+      setSignupData((prev) => ({ ...prev, plan }));
+    }
+  }, [location]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
