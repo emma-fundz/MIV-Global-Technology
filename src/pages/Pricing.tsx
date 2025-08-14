@@ -1,17 +1,23 @@
+import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Zap, Crown, Rocket } from 'lucide-react';
+import { Check, Star, Zap, Crown, Rocket, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import CurrencySelector from '@/components/CurrencySelector';
 
 const Pricing = () => {
+  const [isAnnual, setIsAnnual] = useState(false);
+  const { formatPrice } = useCurrency();
+
   const packages = [
     {
       id: 'starter',
       name: 'Starter',
-      price: '₦5,000',
+      price: 5000,
       period: '/month',
       description: 'Perfect for new entrepreneurs getting started',
       icon: <Zap className="h-6 w-6" />,
@@ -28,7 +34,7 @@ const Pricing = () => {
     {
       id: 'basic',
       name: 'Basic',
-      price: '₦20,000',
+      price: 20000,
       period: '/month',
       description: 'Great for small businesses ready to grow',
       icon: <Star className="h-6 w-6" />,
@@ -47,7 +53,7 @@ const Pricing = () => {
     {
       id: 'standard',
       name: 'Standard',
-      price: '₦50,000',
+      price: 50000,
       period: '/month',
       description: 'Ideal for established businesses scaling up',
       icon: <Crown className="h-6 w-6" />,
@@ -68,7 +74,7 @@ const Pricing = () => {
     {
       id: 'premium',
       name: 'Premium',
-      price: '₦150,000',
+      price: 150000,
       period: '/month',
       description: 'Complete business transformation solution',
       icon: <Rocket className="h-6 w-6" />,
@@ -91,7 +97,7 @@ const Pricing = () => {
     {
       id: 'elite',
       name: 'Elite',
-      price: '₦300,000',
+      price: 300000,
       period: '/month',
       description: 'Enterprise-level transformation package',
       icon: <Crown className="h-6 w-6" />,
@@ -111,35 +117,40 @@ const Pricing = () => {
     }
   ];
 
+  const getDisplayPrice = (basePrice: number) => {
+    const finalPrice = isAnnual ? basePrice * 12 * 0.7 : basePrice;
+    return formatPrice(finalPrice);
+  };
+
   const addOns = [
     {
       name: 'Extra Social Media Platform',
-      price: '₦3,000',
+      price: 3000,
       description: 'Add management for additional social media platform'
     },
     {
       name: 'Advanced SEO Package',
-      price: '₦15,000',
+      price: 15000,
       description: 'Technical SEO audit, keyword research, and optimization'
     },
     {
       name: 'E-commerce Integration',
-      price: '₦25,000',
+      price: 25000,
       description: 'Full online store setup with payment processing'
     },
     {
       name: 'Custom Mobile App',
-      price: '₦80,000',
+      price: 80000,
       description: 'Native iOS/Android app development'
     },
     {
       name: 'Team Training Workshop',
-      price: '₦20,000',
+      price: 20000,
       description: '4-hour digital marketing workshop for your team'
     },
     {
       name: 'Quarterly Business Review',
-      price: '₦10,000',
+      price: 10000,
       description: 'Detailed business performance analysis and strategy session'
     }
   ];
@@ -159,6 +170,31 @@ const Pricing = () => {
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
               Start with any package and scale as your business grows. All plans include our core commitment to your success.
             </p>
+            
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
+              <CurrencySelector />
+              
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Monthly</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAnnual(!isAnnual)}
+                  className="p-0 h-auto"
+                >
+                  {isAnnual ? (
+                    <ToggleRight className="h-6 w-6 text-accent" />
+                  ) : (
+                    <ToggleLeft className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </Button>
+                <span className="text-sm font-medium">
+                  Annually 
+                  <Badge variant="secondary" className="ml-2">Save 30%</Badge>
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -188,8 +224,15 @@ const Pricing = () => {
                     <CardTitle className="text-2xl">{pkg.name}</CardTitle>
                     <CardDescription className="text-sm">{pkg.description}</CardDescription>
                     <div className="mt-4">
-                      <span className="text-4xl font-bold">{pkg.price}</span>
-                      <span className="text-muted-foreground">{pkg.period}</span>
+                      <span className="text-4xl font-bold">{getDisplayPrice(pkg.price)}</span>
+                      <span className="text-muted-foreground">
+                        {isAnnual ? '/year' : pkg.period}
+                      </span>
+                      {isAnnual && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Save {formatPrice(pkg.price * 12 * 0.3)} annually
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   
@@ -242,7 +285,7 @@ const Pricing = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold">{addon.price}</span>
+                      <span className="text-2xl font-bold">{formatPrice(addon.price)}</span>
                       <Button variant="outline" size="sm">
                         Add to Package
                       </Button>

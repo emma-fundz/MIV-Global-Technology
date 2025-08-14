@@ -153,11 +153,11 @@ const Auth = () => {
 
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account.",
+          description: "Welcome to MIV Global Technology!",
         });
 
-        // Switch to login tab
-        setIsLogin(true);
+        // Redirect to welcome screen
+        navigate('/welcome');
       }
     } catch (error: any) {
       toast({

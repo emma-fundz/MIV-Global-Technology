@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import DashboardSidebar from '@/components/DashboardSidebar';
 import { 
   User, 
   Package, 
@@ -18,7 +19,11 @@ import {
   Settings,
   CreditCard,
   Target,
-  Clock
+  Clock,
+  Menu,
+  CheckCircle2,
+  ArrowUpRight,
+  Plus
 } from 'lucide-react';
 
 interface Client {
@@ -48,6 +53,7 @@ const ClientDashboard = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -169,37 +175,73 @@ const ClientDashboard = () => {
   const currentPlan = planDetails[client.plan];
 
   return (
-    <div className="min-h-screen bg-muted">
-      {/* Header */}
-      <div className="bg-background border-b px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
-              <User className="h-5 w-5 text-accent-foreground" />
+    <div className="min-h-screen bg-muted flex">
+      {/* Sidebar */}
+      <DashboardSidebar 
+        isOpen={sidebarOpen} 
+        onToggle={() => setSidebarOpen(!sidebarOpen)} 
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        {/* Top Header */}
+        <div className="bg-background border-b px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold">Welcome back, {client.full_name}!</h1>
+                <p className="text-sm text-muted-foreground">
+                  {client.company_name || 'MIV Client'} • {currentPlan.name} Plan
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold">Welcome back, {client.full_name}!</h1>
-              <p className="text-sm text-muted-foreground">
-                {client.company_name || 'MIV Client'} • {currentPlan.name} Plan
-              </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Logout</span>
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Bell className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="p-4 sm:p-6 space-y-6">
+        {/* Main Content Area */}
+        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto">
+          {/* Quick Setup Card */}
+          <Card className="border-2 border-accent/20 bg-gradient-to-r from-accent/5 to-background">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold mb-2">Take the first step towards your success</h2>
+                  <p className="text-muted-foreground mb-4">
+                    Start your project brief to get your business transformation underway.
+                  </p>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Start Your Project Brief
+                  </Button>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="h-8 w-8 text-accent" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         {/* Current Plan Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
@@ -426,6 +468,7 @@ const ClientDashboard = () => {
               </Button>
             </CardContent>
           </Card>
+         </div>
         </div>
       </div>
     </div>

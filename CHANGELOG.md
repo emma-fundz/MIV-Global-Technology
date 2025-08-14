@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.0] - 2025-08-14
+- Implemented Vonza-style UX improvements across pricing and dashboards
+  - Where: src/contexts/CurrencyContext.tsx, src/components/CurrencySelector.tsx, src/components/MegaMenu.tsx, src/components/DashboardSidebar.tsx
+  - How: Added currency context with localStorage persistence, region/currency selector with auto-lock for Africa→NGN
+- Enhanced Header with region/currency controls and mega menu
+  - Where: src/components/Header.tsx
+  - How: Added CurrencySelector, MegaMenu with 4-column layout, updated navigation with auth state detection
+- Upgraded Pricing page with billing toggle and currency conversion
+  - Where: src/pages/Pricing.tsx  
+  - How: Added Monthly/Annual toggle (Save 30%), currency conversion with exchange rates, dynamic price calculation
+- Created post-signup welcome celebration screen
+  - Where: src/pages/Welcome.tsx, src/App.tsx
+  - How: Full-screen celebration with MIV branding, auto-redirect to dashboard, progress indicator
+- Improved Client Dashboard with Vonza-inspired sidebar layout
+  - Where: src/pages/ClientDashboard.tsx, src/components/DashboardSidebar.tsx
+  - How: Responsive sidebar with collapsible nav, "Take first step" setup card, mobile-friendly design
+- Updated App.tsx with CurrencyProvider wrapper
+  - Where: src/App.tsx
+  - How: Wrapped entire app with CurrencyProvider for global currency state management
+
 ## [v2.0.1] - 2025-08-10
 - Added dedicated auth routes: /login, /signup, /forgot-password
   - Where: src/App.tsx; New file src/pages/ForgotPassword.tsx

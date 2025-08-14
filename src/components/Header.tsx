@@ -1,20 +1,39 @@
-import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import CurrencySelector from './CurrencySelector';
+import MegaMenu from './MegaMenu';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   const navItems = [
     { label: 'Home', href: '/' },
-    { label: 'About Us', href: '/about' },
-    { label: 'Services', href: '/services' },
+    { label: 'About', href: '/about' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'FAQs', href: '/faq' },
-    { label: 'Contact', href: '/contact' },
     { label: 'Blog', href: '/blog' },
+    { label: 'Contact', href: '/contact' },
   ];
+
+  useEffect(() => {
+    // Check for current user
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <header className="fixed top-0 w-full bg-background/95 backdrop-blur-md border-b border-border z-50">
@@ -32,7 +51,7 @@ const Header = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-6">
             {navItems.map((item) => (
               <Link
                 key={item.label}
@@ -42,16 +61,33 @@ const Header = () => {
                 {item.label}
               </Link>
             ))}
+            <MegaMenu />
           </nav>
 
-          {/* CTA Button */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" className="btn-outline-gold">
-              Get Quote
-            </Button>
-            <Button className="btn-gold">
-              Book Consultation
-            </Button>
+          {/* Right Side Controls */}
+          <div className="hidden md:flex items-center space-x-3">
+            <CurrencySelector />
+            {user ? (
+              <Link to={user ? '/client-dashboard' : '/auth'}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <User className="h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="outline" size="sm">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button size="sm">
+                    Start Free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -83,12 +119,30 @@ const Header = () => {
                 </Link>
               ))}
               <div className="pt-4 space-y-2">
-                <Button variant="outline" className="w-full btn-outline-gold">
-                  Get Quote
-                </Button>
-                <Button className="w-full btn-gold">
-                  Book Consultation
-                </Button>
+                <div className="px-3 mb-4">
+                  <CurrencySelector />
+                </div>
+                {user ? (
+                  <Link to="/client-dashboard" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full gap-2">
+                      <User className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" className="w-full">
+                        Login
+                      </Button>
+                    </Link>
+                    <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                      <Button className="w-full">
+                        Start Free
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>
