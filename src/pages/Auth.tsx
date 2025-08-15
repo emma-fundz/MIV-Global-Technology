@@ -137,6 +137,7 @@ const Auth = () => {
       // Clean and sanitize inputs
       const cleanEmail = signupData.email.trim().toLowerCase();
       
+      // First, try to sign up
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: signupData.password,
@@ -148,34 +149,81 @@ const Auth = () => {
         }
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Check if we have a session immediately (auto-confirm enabled)
-        let currentSession = data.session;
-        
-        // If no session but user exists, try to sign in immediately
-        if (!currentSession) {
-          console.log('No session after signup, attempting immediate sign-in...');
+      if (error) {
+        // Handle the case where user already exists
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
+          // Try to sign in instead
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: cleanEmail,
             password: signupData.password,
           });
           
           if (signInError) {
-            console.error('Auto sign-in failed:', signInError);
+            throw new Error('An account with this email already exists. Please try logging in instead.');
+          }
+          
+          // If sign in successful, redirect based on role
+          if (signInData.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('user_id', signInData.user.id)
+              .single();
+
             toast({
-              title: "Account created!",
-              description: "Please check your email for confirmation, then login.",
-              variant: "default",
+              title: "Welcome back!",
+              description: "You were successfully logged in.",
             });
-            setIsLogin(true); // Switch to login tab
+
+            if (profile?.role === 'admin' || profile?.role === 'team') {
+              navigate('/admin-dashboard');
+            } else {
+              navigate('/client-dashboard');
+            }
             return;
           }
-          currentSession = signInData.session;
+        }
+        throw error;
+      }
+
+      if (data.user) {
+        // Auto-confirm or check if we have immediate session
+        let currentSession = data.session;
+        
+        // If no session but user was created, email confirmation might be required
+        if (!currentSession) {
+          console.log('No immediate session after signup. Checking if auto-confirmation is enabled...');
+          
+          // Wait a moment for potential auto-confirmation
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Try to get session again
+          const { data: sessionData } = await supabase.auth.getSession();
+          currentSession = sessionData.session;
+          
+          // If still no session, try manual sign-in
+          if (!currentSession) {
+            console.log('No session found, attempting manual sign-in...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: signupData.password,
+            });
+            
+            if (signInError) {
+              console.error('Auto sign-in failed:', signInError);
+              toast({
+                title: "Account created!",
+                description: "Please check your email for confirmation if required, then try logging in.",
+                variant: "default",
+              });
+              setIsLogin(true); // Switch to login tab
+              return;
+            }
+            currentSession = signInData.session;
+          }
         }
 
-        // Create client record only if we have a session
+        // Create client record if we have a session
         if (currentSession) {
           const { error: clientError } = await supabase
             .from('clients')
@@ -190,6 +238,7 @@ const Auth = () => {
 
           if (clientError) {
             console.error('Error creating client record:', clientError);
+            // Don't fail if client record creation fails, user is still authenticated
           }
 
           toast({
@@ -199,6 +248,14 @@ const Auth = () => {
 
           // Redirect to welcome screen
           navigate('/welcome');
+        } else {
+          // No session could be established
+          toast({
+            title: "Account created!",
+            description: "Please check your email for confirmation, then try logging in.",
+            variant: "default",
+          });
+          setIsLogin(true); // Switch to login tab
         }
       }
     } catch (error: any) {

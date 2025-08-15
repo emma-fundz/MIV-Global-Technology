@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.2] - 2025-08-15
+- Enhanced Supabase auth flow to handle existing users and email confirmation states
+  - Where: src/pages/Auth.tsx
+  - How: Added robust signup flow with auto-login retry, existing user detection, session validation with timeout, improved error handling for user already exists scenario; ensures seamless login after signup regardless of email confirmation settings
+
 ## [v2.1.1] - 2025-08-15
 - Fixed Supabase auth "invalid credentials" after signup issue
   - Where: src/pages/Auth.tsx, src/integrations/supabase/client.ts
