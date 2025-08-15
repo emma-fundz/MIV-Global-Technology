@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.1] - 2025-08-15
+- Fixed Supabase auth "invalid credentials" after signup issue
+  - Where: src/pages/Auth.tsx, src/integrations/supabase/client.ts
+  - How: Added immediate sign-in after signup when session is null; trimmed/lowercased email inputs; added detectSessionInUrl to client config; improved error handling with specific messages for email confirmation and invalid credentials; added autoComplete attributes to email inputs
+
 ## [v2.1.0] - 2025-08-14
 - Implemented Vonza-style UX improvements across pricing and dashboards
   - Where: src/contexts/CurrencyContext.tsx, src/components/CurrencySelector.tsx, src/components/MegaMenu.tsx, src/components/DashboardSidebar.tsx

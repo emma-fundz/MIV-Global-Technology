@@ -68,12 +68,24 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Clean and sanitize inputs
+      const cleanEmail = loginData.email.trim().toLowerCase();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
+        email: cleanEmail,
         password: loginData.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes('email not confirmed') || error.message.includes('Email not confirmed')) {
+          throw new Error('Email confirmation is enabled in Supabase. Our app expects no confirmation. Please disable email confirmations in Supabase Auth settings.');
+        }
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Check your email and password.');
+        }
+        throw error;
+      }
 
       if (data.user) {
         // Get user profile to determine role
@@ -96,6 +108,7 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -121,8 +134,11 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Clean and sanitize inputs
+      const cleanEmail = signupData.email.trim().toLowerCase();
+      
       const { data, error } = await supabase.auth.signUp({
-        email: signupData.email,
+        email: cleanEmail,
         password: signupData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth`,
@@ -135,31 +151,58 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Create client record
-        const { error: clientError } = await supabase
-          .from('clients')
-          .insert({
-            user_id: data.user.id,
-            full_name: signupData.fullName,
-            email: signupData.email,
-            company_name: signupData.companyName,
-            phone: signupData.phone,
-            plan: signupData.plan as any
+        // Check if we have a session immediately (auto-confirm enabled)
+        let currentSession = data.session;
+        
+        // If no session but user exists, try to sign in immediately
+        if (!currentSession) {
+          console.log('No session after signup, attempting immediate sign-in...');
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: signupData.password,
           });
-
-        if (clientError) {
-          console.error('Error creating client record:', clientError);
+          
+          if (signInError) {
+            console.error('Auto sign-in failed:', signInError);
+            toast({
+              title: "Account created!",
+              description: "Please check your email for confirmation, then login.",
+              variant: "default",
+            });
+            setIsLogin(true); // Switch to login tab
+            return;
+          }
+          currentSession = signInData.session;
         }
 
-        toast({
-          title: "Account created!",
-          description: "Welcome to MIV Global Technology!",
-        });
+        // Create client record only if we have a session
+        if (currentSession) {
+          const { error: clientError } = await supabase
+            .from('clients')
+            .insert({
+              user_id: data.user.id,
+              full_name: signupData.fullName,
+              email: cleanEmail,
+              company_name: signupData.companyName,
+              phone: signupData.phone,
+              plan: signupData.plan as any
+            });
 
-        // Redirect to welcome screen
-        navigate('/welcome');
+          if (clientError) {
+            console.error('Error creating client record:', clientError);
+          }
+
+          toast({
+            title: "Account created!",
+            description: "Welcome to MIV Global Technology!",
+          });
+
+          // Redirect to welcome screen
+          navigate('/welcome');
+        }
       }
     } catch (error: any) {
+      console.error('Signup error:', error);
       toast({
         title: "Signup failed",
         description: error.message,
@@ -200,6 +243,7 @@ const Auth = () => {
                     value={loginData.email}
                     onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     required
                   />
                 </div>
@@ -242,6 +286,7 @@ const Auth = () => {
                     value={signupData.email}
                     onChange={(e) => setSignupData({...signupData, email: e.target.value})}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     required
                   />
                 </div>
