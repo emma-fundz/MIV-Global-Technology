@@ -13,6 +13,7 @@ import FAQ from "./pages/FAQ";
 import Testimonials from "./pages/Testimonials";
 import Blog from "./pages/Blog";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import ClientDashboard from "./pages/ClientDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Admin from "./pages/Admin";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/testimonials" element={<Testimonials />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/signup" element={<Auth />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

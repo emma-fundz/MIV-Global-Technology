@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.3] - 2025-08-16
+- Implemented standard Supabase auth flow with email confirmation
+  - Where: src/pages/Auth.tsx, src/pages/AuthCallback.tsx, src/App.tsx
+  - How: Removed instant login after signup; added confirmation email messaging; created /auth/callback route to handle email confirmation redirects; updated login error to show "Please confirm your email" for unconfirmed accounts; preserved user metadata during signup for client record creation after confirmation
+
 ## [v2.1.2] - 2025-08-15
 - Enhanced Supabase auth flow to handle existing users and email confirmation states
   - Where: src/pages/Auth.tsx
