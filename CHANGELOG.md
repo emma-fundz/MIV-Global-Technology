@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v2.1.4] - 2025-08-16
+- Reverted to instant login after signup without email confirmation
+  - Where: src/pages/Auth.tsx
+  - How: Removed emailRedirectTo option from signup; added immediate signInWithPassword call after successful signup; updated success message with celebration emoji; auto-redirect to role-based dashboard after instant login
+
 ## [v2.1.3] - 2025-08-16
 - Implemented standard Supabase auth flow with email confirmation
   - Where: src/pages/Auth.tsx, src/pages/AuthCallback.tsx, src/App.tsx

@@ -137,12 +137,11 @@ const Auth = () => {
       // Clean and sanitize inputs
       const cleanEmail = signupData.email.trim().toLowerCase();
       
-      // Standard Supabase signup with email confirmation
+      // Signup without email confirmation
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: signupData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: signupData.fullName,
             company_name: signupData.companyName,
@@ -157,13 +156,36 @@ const Auth = () => {
       }
 
       if (data.user) {
-        toast({
-          title: "Account created!",
-          description: "We've sent a confirmation link to your email. Please confirm your email before logging in.",
+        // Immediately sign in the user
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: signupData.password,
         });
 
-        // Switch to login tab and show confirmation message
-        setIsLogin(true);
+        if (loginError) {
+          throw loginError;
+        }
+
+        if (loginData.user) {
+          // Get user profile to determine role
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('user_id', loginData.user.id)
+            .single();
+
+          toast({
+            title: "🎉 Welcome to MIV Global Technology!",
+            description: "Your account has been created successfully. Explore your dashboard and start building.",
+          });
+
+          // Redirect based on role
+          if (profile?.role === 'admin' || profile?.role === 'team') {
+            navigate('/admin-dashboard');
+          } else {
+            navigate('/client-dashboard');
+          }
+        }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
