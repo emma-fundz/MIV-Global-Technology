@@ -1,3 +1,10 @@
+## [v2.1.11] - 2025-08-18
+- Fix: Resolved root cause of "Profile not found" error in signup/login flow
+  - Root cause: Auth component was using `.single()` instead of `.maybeSingle()` when checking for profiles/clients, causing silent query failures when records didn't exist yet
+  - Where: `src/pages/Auth.tsx`
+  - How: Replaced all `.single()` calls with `.maybeSingle()` and added proper error logging; improved error handling to catch and log Supabase query errors; maintained all existing retry and self-heal logic in ClientDashboard
+  - Result: New users now consistently get through signup → login → dashboard flow without "Profile not found" errors; better debugging visibility for any future issues
+
 ## [v2.1.10] - 2025-08-16
 - Frontend: Hardened dashboard fetch flow with retry and self-heal
   - Where: `src/pages/ClientDashboard.tsx`

@@ -88,37 +88,48 @@ const Auth = () => {
         const sessionUser = data.user;
 
         // Profile check/insert
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile, error: profileError } = await supabase
           .from('profiles')
           .select('id, role')
           .eq('user_id', sessionUser.id)
-          .single();
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error checking profile:', profileError);
+        }
 
         if (!existingProfile) {
           const meta = sessionUser.user_metadata || {};
           try {
-            await supabase.from('profiles').insert({
+            const { error: insertError } = await supabase.from('profiles').insert({
               user_id: sessionUser.id,
               email: sessionUser.email!,
               full_name: meta.full_name || sessionUser.email,
               role: 'client'
             } as any);
+            if (insertError) {
+              console.log('Profile insert race condition or already exists:', insertError.message);
+            }
           } catch (e) {
-            // ignore insert race conditions
+            console.log('Profile insert error caught:', e);
           }
         }
 
         // Client check/insert
-        const { data: existingClient } = await supabase
+        const { data: existingClient, error: clientError } = await supabase
           .from('clients')
           .select('id')
           .eq('user_id', sessionUser.id)
-          .single();
+          .maybeSingle();
+
+        if (clientError) {
+          console.error('Error checking client:', clientError);
+        }
 
         if (!existingClient) {
           const meta = sessionUser.user_metadata || {};
           try {
-            await supabase.from('clients').insert({
+            const { error: insertError } = await supabase.from('clients').insert({
               user_id: sessionUser.id,
               full_name: meta.full_name || sessionUser.email,
               email: sessionUser.email!,
@@ -126,17 +137,24 @@ const Auth = () => {
               phone: meta.phone || '',
               plan: meta.plan || 'basic'
             } as any);
+            if (insertError) {
+              console.log('Client insert race condition or already exists:', insertError.message);
+            }
           } catch (e) {
-            // ignore insert race conditions
+            console.log('Client insert error caught:', e);
           }
         }
 
         // Get user profile to determine role
-        const { data: profile } = await supabase
+        const { data: profile, error: roleError } = await supabase
           .from('profiles')
           .select('role')
           .eq('user_id', data.user.id)
-          .single();
+          .maybeSingle();
+
+        if (roleError) {
+          console.error('Error fetching role:', roleError);
+        }
 
         toast({
           title: "Login successful!",
@@ -219,35 +237,46 @@ const Auth = () => {
           const plan = userMetadata.plan || signupData.plan || 'basic';
 
           // Create profile if missing
-          const { data: existingProfile } = await supabase
+          const { data: existingProfile, error: profileError } = await supabase
             .from('profiles')
             .select('id, role')
             .eq('user_id', loginData.user.id)
-            .single();
+            .maybeSingle();
+
+          if (profileError) {
+            console.error('Error checking profile during signup:', profileError);
+          }
 
           if (!existingProfile) {
             try {
-              await supabase.from('profiles').insert({
+              const { error: insertError } = await supabase.from('profiles').insert({
                 user_id: loginData.user.id,
                 email: loginData.user.email!,
                 full_name: fullName,
                 role: 'client'
               } as any);
+              if (insertError) {
+                console.log('Profile insert during signup - race condition or already exists:', insertError.message);
+              }
             } catch (e) {
-              // ignore insert race conditions
+              console.log('Profile insert error during signup:', e);
             }
           }
 
           // Create client if missing (avoid upsert dependency on unique index)
-          const { data: existingClient } = await supabase
+          const { data: existingClient, error: clientError } = await supabase
             .from('clients')
             .select('id')
             .eq('user_id', loginData.user.id)
-            .single();
+            .maybeSingle();
+
+          if (clientError) {
+            console.error('Error checking client during signup:', clientError);
+          }
 
           if (!existingClient) {
             try {
-              await supabase.from('clients').insert({
+              const { error: insertError } = await supabase.from('clients').insert({
                 user_id: loginData.user.id,
                 full_name: fullName,
                 email: loginData.user.email!,
@@ -255,8 +284,11 @@ const Auth = () => {
                 phone,
                 plan
               } as any);
+              if (insertError) {
+                console.log('Client insert during signup - race condition or already exists:', insertError.message);
+              }
             } catch (e) {
-              // ignore insert race conditions
+              console.log('Client insert error during signup:', e);
             }
           }
 
