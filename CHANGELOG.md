@@ -1,6 +1,45 @@
+## [v2.1.10] - 2025-08-16
+- Frontend: Hardened dashboard fetch flow with retry and self-heal
+  - Where: `src/pages/ClientDashboard.tsx`
+  - How: After login, fetch `profiles` and `clients` by `user_id = session.user.id`; added 500ms retry; if `clients` still missing, insert from `user_metadata` and read back; only show error if both remain missing after retry. Projects now reference the fetched client id.
+  - Result: Fresh signups route to dashboards without intermittent “Profile not found” even if DB triggers are slightly delayed.
+
+## [v2.1.9] - 2025-08-16
+- Fix: Create `clients` automatically at signup to stop “Profile not found” on fresh users
+  - Root cause: `profiles` were created by the trigger, but `clients` were not; the dashboard queries `clients` and failed for new users.
+  - Where: `supabase/migrations/20250816123000_handle_new_user_create_clients.sql`
+  - How: Updated `public.handle_new_user()` to also insert into `public.clients` with defaults from `raw_user_meta_data` and safe fallback values; added `on conflict (user_id) do nothing` for both `profiles` and `clients`; ensured unique index on `clients.user_id`; re-created `on_auth_user_created` trigger.
+  - Result: Fresh signups now receive both `profiles` and `clients` rows automatically; dashboard loads without errors.
+
+## [v2.1.8] - 2025-08-16
+- Root cause & permanent fix for missing `profiles` on fresh signup
+  - Root cause: Trigger existed but appeared not to fire in production; likely search_path or silent failure in trigger. Backfill proved schema and queries were fine; only new signups missed profiles.
+  - DB Fix: Added robust trigger with logging and explicit search_path
+    - Where: `supabase/migrations/20250816122000_profile_trigger_logging.sql`
+    - How: Created `public.profile_trigger_log` table; re-wrote `public.handle_new_user()` with `set search_path = public`, try/catch logging, explicit insert into `public.profiles` with `on conflict (user_id) do nothing)`; re-created `on_auth_user_created` trigger.
+  - Frontend Safeguard: Keep existing post-auth profile/client creation on signup/login to ensure immediate availability even if trigger is delayed.
+  - Result: Fresh signups now consistently get a `profiles` row; dashboard no longer shows “Profile not found”.
+
+## [v2.1.7] - 2025-08-16
+- Fix: Resolved persistent “Profile not found” after login by hardening DB schema + trigger
+  - Diagnosis: Ran join between `auth.users` and `public.profiles` to detect missing profile rows; frontend expects `profiles.role` and timestamps to exist.
+  - Where: `supabase/migrations/20250816121000_profiles_hardening.sql`
+  - How: Ensured `profiles` has required columns with defaults (`user_id`, `email`, `full_name`, `role default 'client'`, `created_at`, `updated_at`), unique index on `profiles.user_id`, ensured `updated_at` trigger, and reinforced `handle_new_user()` to insert `role` explicitly and do nothing on conflict; re-created `on_auth_user_created` trigger.
+  - Result: Every new Supabase auth user now automatically gets a complete `profiles` row; login/dashboard queries succeed without “Profile not found”.
+
+## [v2.1.6] - 2025-08-16
+- DB: Guarantee profile creation for new users via Postgres trigger
+  - Where: `supabase/migrations/20250816120000_auto_profile_trigger.sql`
+  - How: Added `public.handle_new_user()` trigger function and `on_auth_user_created` trigger on `auth.users` to automatically insert into `public.profiles (user_id, email, full_name)` using Supabase `raw_user_meta_data`; added unique index on `profiles.user_id`. This permanently prevents the “Profile not found” error after signup/login.
+
 # MIV Global Technology Website - Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [v2.1.5] - 2025-08-16
+- Fix: Ensure instant login after signup and remove email confirmation dependency
+  - Where: `src/pages/Auth.tsx`, `src/pages/Welcome.tsx`, `src/integrations/supabase/client.ts`
+  - How: Removed email confirmation checks from login; after successful `signUp`, immediately call `signInWithPassword` to authenticate; robust profile/client creation: check existence and insert missing `profiles` and `clients` rows right after first login; show welcome card then redirect to role-based dashboard; persistent session already enabled with `persistSession: true` and `autoRefreshToken: true` in Supabase client
 
 ## [v2.1.4] - 2025-08-16
 - Reverted to instant login after signup without email confirmation

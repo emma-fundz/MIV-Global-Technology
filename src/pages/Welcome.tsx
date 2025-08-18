@@ -1,20 +1,42 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Sparkles } from 'lucide-react';
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const [redirectPath, setRedirectPath] = useState<string>('/client-dashboard');
 
   useEffect(() => {
-    // Auto-redirect after 5 seconds if user doesn't click continue
+    const determineRedirect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+          if (profile?.role === 'admin' || profile?.role === 'team') {
+            setRedirectPath('/admin-dashboard');
+          } else {
+            setRedirectPath('/client-dashboard');
+          }
+        }
+      } catch {
+        setRedirectPath('/client-dashboard');
+      }
+    };
+    determineRedirect();
+
     const timer = setTimeout(() => {
-      navigate('/client-dashboard');
+      navigate(redirectPath);
     }, 8000);
 
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, redirectPath]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-accent/5 to-background flex items-center justify-center p-4">
@@ -72,7 +94,7 @@ const Welcome = () => {
           <Button 
             size="lg" 
             className="w-full max-w-sm mx-auto h-12 text-lg"
-            onClick={() => navigate('/client-dashboard')}
+            onClick={() => navigate(redirectPath)}
           >
             Continue to Dashboard
           </Button>

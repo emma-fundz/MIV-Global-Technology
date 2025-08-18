@@ -86,15 +86,77 @@ const ClientDashboard = () => {
 
       setUser(session.user);
       
-      // Get client data
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
+      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-      if (clientError) {
-        console.error('Error fetching client:', clientError);
+      // Fetch profile (for completeness) with retry
+      const fetchProfile = async () => {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (profileRow) return profileRow;
+        await delay(500);
+        const { data: profileRetry } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        return profileRetry;
+      };
+
+      // Fetch client with retry and self-heal
+      const fetchClient = async (): Promise<Client | null> => {
+        let { data: clientRow } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (!clientRow) {
+          await delay(500);
+          ({ data: clientRow } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle());
+        }
+
+        if (!clientRow) {
+          // As a final safeguard, create client using metadata
+          const meta = session.user.user_metadata || {};
+          const fullName = meta.full_name || session.user.email;
+          const companyName = meta.company_name || '';
+          const phone = meta.phone || '';
+          const plan = (['starter','basic','standard','premium'].includes(meta.plan) ? meta.plan : 'basic') as any;
+          try {
+            await supabase.from('clients').insert({
+              user_id: session.user.id,
+              full_name: fullName,
+              email: session.user.email!,
+              company_name: companyName,
+              phone,
+              plan,
+            } as any);
+            ({ data: clientRow } = await supabase
+              .from('clients')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .maybeSingle());
+          } catch (e) {
+            // ignore and let caller handle
+          }
+        }
+
+        return (clientRow as any) || null;
+      };
+
+      const [profileRow, clientRow] = await Promise.all([
+        fetchProfile(),
+        fetchClient(),
+      ]);
+
+      if (!profileRow && !clientRow) {
         toast({
           title: "Error",
           description: "Failed to load your profile. Please try again.",
@@ -103,13 +165,15 @@ const ClientDashboard = () => {
         return;
       }
 
-      setClient(clientData);
+      if (clientRow) {
+        setClient(clientRow);
+      }
 
       // Get projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
-        .eq('client_id', clientData.id);
+        .eq('client_id', (clientRow as any)?.id);
 
       if (projectsError) {
         console.error('Error fetching projects:', projectsError);

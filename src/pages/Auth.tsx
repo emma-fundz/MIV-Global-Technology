@@ -77,10 +77,6 @@ const Auth = () => {
       });
 
       if (error) {
-        // Handle specific error cases
-        if (error.message.includes('email not confirmed') || error.message.includes('Email not confirmed')) {
-          throw new Error('Please confirm your email before logging in. Check your inbox for the confirmation link.');
-        }
         if (error.message.includes('Invalid login credentials')) {
           throw new Error('Check your email and password.');
         }
@@ -88,6 +84,53 @@ const Auth = () => {
       }
 
       if (data.user) {
+        // Ensure profile and client exist for returning users as well
+        const sessionUser = data.user;
+
+        // Profile check/insert
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id, role')
+          .eq('user_id', sessionUser.id)
+          .single();
+
+        if (!existingProfile) {
+          const meta = sessionUser.user_metadata || {};
+          try {
+            await supabase.from('profiles').insert({
+              user_id: sessionUser.id,
+              email: sessionUser.email!,
+              full_name: meta.full_name || sessionUser.email,
+              role: 'client'
+            } as any);
+          } catch (e) {
+            // ignore insert race conditions
+          }
+        }
+
+        // Client check/insert
+        const { data: existingClient } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', sessionUser.id)
+          .single();
+
+        if (!existingClient) {
+          const meta = sessionUser.user_metadata || {};
+          try {
+            await supabase.from('clients').insert({
+              user_id: sessionUser.id,
+              full_name: meta.full_name || sessionUser.email,
+              email: sessionUser.email!,
+              company_name: meta.company_name || '',
+              phone: meta.phone || '',
+              plan: meta.plan || 'basic'
+            } as any);
+          } catch (e) {
+            // ignore insert race conditions
+          }
+        }
+
         // Get user profile to determine role
         const { data: profile } = await supabase
           .from('profiles')
@@ -137,7 +180,7 @@ const Auth = () => {
       // Clean and sanitize inputs
       const cleanEmail = signupData.email.trim().toLowerCase();
       
-      // Signup without email confirmation
+      // Signup without email confirmation (instant login flow)
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: signupData.password,
@@ -167,24 +210,63 @@ const Auth = () => {
         }
 
         if (loginData.user) {
-          // Get user profile to determine role
-          const { data: profile } = await supabase
+          // Ensure profile and client records exist for this user
+          // Create or update client record based on signup metadata
+          const userMetadata = loginData.user.user_metadata || {};
+          const fullName = userMetadata.full_name || signupData.fullName || loginData.user.email;
+          const companyName = userMetadata.company_name || signupData.companyName || '';
+          const phone = userMetadata.phone || signupData.phone || '';
+          const plan = userMetadata.plan || signupData.plan || 'basic';
+
+          // Create profile if missing
+          const { data: existingProfile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('id, role')
             .eq('user_id', loginData.user.id)
             .single();
+
+          if (!existingProfile) {
+            try {
+              await supabase.from('profiles').insert({
+                user_id: loginData.user.id,
+                email: loginData.user.email!,
+                full_name: fullName,
+                role: 'client'
+              } as any);
+            } catch (e) {
+              // ignore insert race conditions
+            }
+          }
+
+          // Create client if missing (avoid upsert dependency on unique index)
+          const { data: existingClient } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('user_id', loginData.user.id)
+            .single();
+
+          if (!existingClient) {
+            try {
+              await supabase.from('clients').insert({
+                user_id: loginData.user.id,
+                full_name: fullName,
+                email: loginData.user.email!,
+                company_name: companyName,
+                phone,
+                plan
+              } as any);
+            } catch (e) {
+              // ignore insert race conditions
+            }
+          }
 
           toast({
             title: "🎉 Welcome to MIV Global Technology!",
             description: "Your account has been created successfully. Explore your dashboard and start building.",
           });
 
-          // Redirect based on role
-          if (profile?.role === 'admin' || profile?.role === 'team') {
-            navigate('/admin-dashboard');
-          } else {
-            navigate('/client-dashboard');
-          }
+          // Show welcome screen first, then it will redirect to the appropriate dashboard
+          navigate('/welcome', { replace: true });
         }
       }
     } catch (error: any) {
