@@ -7,13 +7,85 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      blog_posts: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          excerpt: string
+          featured: boolean | null
+          id: string
+          image_url: string
+          published: boolean | null
+          read_time: string
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          excerpt: string
+          featured?: boolean | null
+          id?: string
+          image_url: string
+          published?: boolean | null
+          read_time: string
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          excerpt?: string
+          featured?: boolean | null
+          id?: string
+          image_url?: string
+          published?: boolean | null
+          read_time?: string
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           company_name: string | null
@@ -91,6 +163,48 @@ export type Database = {
           phone?: string | null
           service?: string | null
           status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homepage_content: {
+        Row: {
+          about_description: string
+          about_title: string
+          created_at: string
+          cta_primary_text: string
+          cta_secondary_text: string
+          id: string
+          intro_description: string
+          intro_subtitle: string
+          intro_title: string
+          tech_stacks: Json
+          updated_at: string
+        }
+        Insert: {
+          about_description: string
+          about_title: string
+          created_at?: string
+          cta_primary_text: string
+          cta_secondary_text: string
+          id?: string
+          intro_description: string
+          intro_subtitle: string
+          intro_title: string
+          tech_stacks?: Json
+          updated_at?: string
+        }
+        Update: {
+          about_description?: string
+          about_title?: string
+          created_at?: string
+          cta_primary_text?: string
+          cta_secondary_text?: string
+          id?: string
+          intro_description?: string
+          intro_subtitle?: string
+          intro_title?: string
+          tech_stacks?: Json
           updated_at?: string
         }
         Relationships: []
@@ -188,143 +302,159 @@ export type Database = {
           },
         ]
       }
-      employees: {
+      projects_content: {
         Row: {
-          id: string
-          name: string
-          role: string
-          phone: string
-          picture_url: string | null
+          buy_url: string | null
+          category: string
           created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          role: string
-          phone: string
-          picture_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          role?: string
-          phone?: string
-          picture_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages: {
-        Row: {
-          id: string
-          name: string
-          email: string
-          company: string | null
-          phone: string | null
-          service: string | null
-          message: string
-          status: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          email: string
-          company?: string | null
-          phone?: string | null
-          service?: string | null
-          message: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string
-          company?: string | null
-          phone?: string | null
-          service?: string | null
-          message?: string
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      blog_posts: {
-        Row: {
-          id: string
-          title: string
-          slug: string
-          excerpt: string | null
-          content: string
-          featured_image: string | null
-          category: string | null
-          tags: string[] | null
-          author_id: string | null
-          status: string
+          demo_url: string | null
+          description: string
           featured: boolean | null
-          views: number | null
-          published_at: string | null
-          created_at: string
+          github_url: string | null
+          id: string
+          image_url: string
+          tags: Json
+          title: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          title: string
-          slug: string
-          excerpt?: string | null
-          content: string
-          featured_image?: string | null
-          category?: string | null
-          tags?: string[] | null
-          author_id?: string | null
-          status?: string
-          featured?: boolean | null
-          views?: number | null
-          published_at?: string | null
+          buy_url?: string | null
+          category: string
           created_at?: string
+          demo_url?: string | null
+          description: string
+          featured?: boolean | null
+          github_url?: string | null
+          id?: string
+          image_url: string
+          tags?: Json
+          title: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          title?: string
-          slug?: string
-          excerpt?: string | null
-          content?: string
-          featured_image?: string | null
-          category?: string | null
-          tags?: string[] | null
-          author_id?: string | null
-          status?: string
-          featured?: boolean | null
-          views?: number | null
-          published_at?: string | null
+          buy_url?: string | null
+          category?: string
           created_at?: string
+          demo_url?: string | null
+          description?: string
+          featured?: boolean | null
+          github_url?: string | null
+          id?: string
+          image_url?: string
+          tags?: Json
+          title?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "blog_posts_author_id_fkey"
-            columns: ["author_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
+      }
+      services_content: {
+        Row: {
+          created_at: string
+          description: string
+          features: Json
+          id: string
+          popular: boolean | null
+          price: string | null
+          tier: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          features?: Json
+          id?: string
+          popular?: boolean | null
+          price?: string | null
+          tier: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          features?: Json
+          id?: string
+          popular?: boolean | null
+          price?: string | null
+          tier?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_links: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          platform: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          icon: string
+          id?: string
+          platform: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          platform?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      strategies_content: {
+        Row: {
+          content: string
+          created_at: string
+          description: string
+          featured: boolean | null
+          id: string
+          image_url: string | null
+          metrics: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          description: string
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          metrics?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          description?: string
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          metrics?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       project_status:
