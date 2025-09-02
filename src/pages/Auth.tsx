@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Globe, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -34,12 +34,15 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Ensure profile exists with robust fallback
+        await ensureProfileExists(session.user);
+        
         // Check user role and redirect appropriately
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
           .eq('user_id', session.user.id)
-          .single();
+          .maybeSingle();
         
         if (profile?.role === 'admin' || profile?.role === 'team') {
           navigate('/admin-dashboard');
@@ -52,13 +55,74 @@ const Auth = () => {
     checkUser();
   }, [navigate]);
 
+  // Robust profile creation function
+  const ensureProfileExists = async (user: any) => {
+    try {
+      // Check if profile exists
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error checking profile:', profileError);
+      }
+
+      // Create profile if missing
+      if (!existingProfile) {
+        const meta = user.user_metadata || {};
+        const { error: insertError } = await supabase.from('profiles').insert({
+          user_id: user.id,
+          email: user.email!,
+          full_name: meta.full_name || user.email,
+          role: 'client'
+        });
+        
+        if (insertError && !insertError.message.includes('duplicate key')) {
+          console.error('Profile creation failed:', insertError);
+        }
+      }
+
+      // Check if client exists
+      const { data: existingClient, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (clientError) {
+        console.error('Error checking client:', clientError);
+      }
+
+      // Create client if missing
+      if (!existingClient) {
+        const meta = user.user_metadata || {};
+        const { error: insertError } = await supabase.from('clients').insert({
+          user_id: user.id,
+          full_name: meta.full_name || user.email,
+          email: user.email!,
+          company_name: meta.company_name || '',
+          phone: meta.phone || '',
+          plan: meta.plan || 'basic'
+        });
+        
+        if (insertError && !insertError.message.includes('duplicate key')) {
+          console.error('Client creation failed:', insertError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in ensureProfileExists:', error);
+    }
+  };
+
   // Set tab and preselect plan from URL
   useEffect(() => {
     if (location.pathname === '/signup') setIsLogin(false);
     if (location.pathname === '/login') setIsLogin(true);
     const params = new URLSearchParams(location.search);
     const plan = params.get('plan');
-    if (plan && ['starter','basic','standard','premium'].includes(plan)) {
+    if (plan && ['free','starter','basic','standard','premium'].includes(plan)) {
       setSignupData((prev) => ({ ...prev, plan }));
     }
   }, [location]);
@@ -85,75 +149,31 @@ const Auth = () => {
 
       if (data.user) {
         // Ensure profile and client exist for returning users as well
-        const sessionUser = data.user;
+        await ensureProfileExists(data.user);
 
-        // Profile check/insert
-        const { data: existingProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, role')
-          .eq('user_id', sessionUser.id)
-          .maybeSingle();
+        // Get user profile to determine role with retry
+        let profile = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!profile && retryCount < maxRetries) {
+          const { data: profileData, error: roleError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
 
-        if (profileError) {
-          console.error('Error checking profile:', profileError);
-        }
-
-        if (!existingProfile) {
-          const meta = sessionUser.user_metadata || {};
-          try {
-            const { error: insertError } = await supabase.from('profiles').insert({
-              user_id: sessionUser.id,
-              email: sessionUser.email!,
-              full_name: meta.full_name || sessionUser.email,
-              role: 'client'
-            } as any);
-            if (insertError) {
-              console.log('Profile insert race condition or already exists:', insertError.message);
-            }
-          } catch (e) {
-            console.log('Profile insert error caught:', e);
+          if (roleError) {
+            console.error('Error fetching role:', roleError);
           }
-        }
-
-        // Client check/insert
-        const { data: existingClient, error: clientError } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('user_id', sessionUser.id)
-          .maybeSingle();
-
-        if (clientError) {
-          console.error('Error checking client:', clientError);
-        }
-
-        if (!existingClient) {
-          const meta = sessionUser.user_metadata || {};
-          try {
-            const { error: insertError } = await supabase.from('clients').insert({
-              user_id: sessionUser.id,
-              full_name: meta.full_name || sessionUser.email,
-              email: sessionUser.email!,
-              company_name: meta.company_name || '',
-              phone: meta.phone || '',
-              plan: meta.plan || 'basic'
-            } as any);
-            if (insertError) {
-              console.log('Client insert race condition or already exists:', insertError.message);
-            }
-          } catch (e) {
-            console.log('Client insert error caught:', e);
+          
+          profile = profileData;
+          if (!profile && retryCount < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
+            retryCount++;
+          } else {
+            break;
           }
-        }
-
-        // Get user profile to determine role
-        const { data: profile, error: roleError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('user_id', data.user.id)
-          .maybeSingle();
-
-        if (roleError) {
-          console.error('Error fetching role:', roleError);
         }
 
         toast({
@@ -229,68 +249,7 @@ const Auth = () => {
 
         if (loginData.user) {
           // Ensure profile and client records exist for this user
-          // Create or update client record based on signup metadata
-          const userMetadata = loginData.user.user_metadata || {};
-          const fullName = userMetadata.full_name || signupData.fullName || loginData.user.email;
-          const companyName = userMetadata.company_name || signupData.companyName || '';
-          const phone = userMetadata.phone || signupData.phone || '';
-          const plan = userMetadata.plan || signupData.plan || 'basic';
-
-          // Create profile if missing
-          const { data: existingProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, role')
-            .eq('user_id', loginData.user.id)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error('Error checking profile during signup:', profileError);
-          }
-
-          if (!existingProfile) {
-            try {
-              const { error: insertError } = await supabase.from('profiles').insert({
-                user_id: loginData.user.id,
-                email: loginData.user.email!,
-                full_name: fullName,
-                role: 'client'
-              } as any);
-              if (insertError) {
-                console.log('Profile insert during signup - race condition or already exists:', insertError.message);
-              }
-            } catch (e) {
-              console.log('Profile insert error during signup:', e);
-            }
-          }
-
-          // Create client if missing (avoid upsert dependency on unique index)
-          const { data: existingClient, error: clientError } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('user_id', loginData.user.id)
-            .maybeSingle();
-
-          if (clientError) {
-            console.error('Error checking client during signup:', clientError);
-          }
-
-          if (!existingClient) {
-            try {
-              const { error: insertError } = await supabase.from('clients').insert({
-                user_id: loginData.user.id,
-                full_name: fullName,
-                email: loginData.user.email!,
-                company_name: companyName,
-                phone,
-                plan
-              } as any);
-              if (insertError) {
-                console.log('Client insert during signup - race condition or already exists:', insertError.message);
-              }
-            } catch (e) {
-              console.log('Client insert error during signup:', e);
-            }
-          }
+          await ensureProfileExists(loginData.user);
 
           toast({
             title: "🎉 Welcome to MIV Global Technology!",
@@ -317,8 +276,12 @@ const Auth = () => {
     <div className="min-h-screen bg-muted flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
-            <Globe className="h-8 w-8 text-accent-foreground" />
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 p-2">
+            <img 
+              src="/lovable-uploads/7dbec63c-b4f2-4c1e-bfc4-c7fd0dff4d18.png" 
+              alt="MIV Global Technology" 
+              className="h-full w-full object-contain"
+            />
           </div>
           <CardTitle className="text-2xl">Welcome to MIV</CardTitle>
           <CardDescription>
@@ -417,6 +380,7 @@ const Auth = () => {
                       <SelectValue placeholder="Select a plan" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="free">Free - ₦0/month</SelectItem>
                       <SelectItem value="starter">Starter - ₦5,000/month</SelectItem>
                       <SelectItem value="basic">Basic - ₦20,000/month</SelectItem>
                       <SelectItem value="standard">Standard - ₦50,000/month</SelectItem>

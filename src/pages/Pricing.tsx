@@ -15,6 +15,22 @@ const Pricing = () => {
 
   const packages = [
     {
+      id: 'free',
+      name: 'Free',
+      price: 0,
+      period: '/month',
+      description: 'Get started with essential business guidance',
+      icon: <Zap className="h-6 w-6" />,
+      popular: false,
+      features: [
+        'Consultation',
+        'Free ticket 🎟️ for 2 upcoming events',
+        'Basic business guidance',
+        'Community access',
+        'Email support'
+      ]
+    },
+    {
       id: 'starter',
       name: 'Starter',
       price: 5000,
@@ -251,10 +267,12 @@ const Pricing = () => {
                         className={`w-full ${
                           pkg.popular 
                             ? 'bg-accent hover:bg-accent/90' 
+                            : pkg.id === 'free'
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
                             : 'bg-primary hover:bg-primary/90'
                         }`}
                       >
-                        {pkg.id === 'elite' ? 'Contact Us' : `Choose ${pkg.name}`}
+                        {pkg.id === 'elite' ? 'Contact Us' : pkg.id === 'free' ? 'Get Started Free' : `Choose ${pkg.name}`}
                       </Button>
                     </Link>
                   </CardContent>

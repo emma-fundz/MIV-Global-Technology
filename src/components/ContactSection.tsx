@@ -11,6 +11,7 @@ const ContactSection = () => {
     name: '',
     email: '',
     company: '',
+    phone: '',
     service: '',
     message: ''
   });
@@ -28,17 +29,18 @@ const ContactSection = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('contact_submissions').insert({
+      const { error } = await supabase.from('messages').insert({
         name: formData.name,
         email: formData.email,
         company: formData.company || null,
+        phone: formData.phone || null,
         service: formData.service || null,
         message: formData.message,
         status: 'new'
       });
       if (error) throw error;
       toast({ title: 'Message Sent', description: 'We will get back to you shortly.' });
-      setFormData({ name: '', email: '', company: '', service: '', message: '' });
+      setFormData({ name: '', email: '', company: '', phone: '', service: '', message: '' });
     } catch (err: any) {
       toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
     } finally {
@@ -131,21 +133,33 @@ const ContactSection = () => {
                     />
                   </div>
                   <div>
-                    <select
-                      name="service"
-                      value={formData.service}
+                    <Input
+                      type="tel"
+                      name="phone"
+                      placeholder="Phone Number"
+                      value={formData.phone}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                      required
-                    >
-                      <option value="">Select Service</option>
-                      <option value="digital-solutions">Digital Solutions</option>
-                      <option value="branding-media">Branding & Media</option>
-                      <option value="marketing-sales">Marketing & Sales</option>
-                      <option value="business-strategy">Business Strategy</option>
-                      <option value="complete-package">Complete Package</option>
-                    </select>
+                      className="bg-background"
+                    />
                   </div>
+                </div>
+                
+                <div>
+                  <select
+                    name="service"
+                    value={formData.service}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                    required
+                  >
+                    <option value="">Select Service</option>
+                    <option value="Web Development">Web Development</option>
+                    <option value="Mobile Apps">Mobile Apps</option>
+                    <option value="Brand Identity">Brand Identity</option>
+                    <option value="Digital Marketing">Digital Marketing</option>
+                    <option value="Business Strategy">Business Strategy</option>
+                    <option value="IT Consulting">IT Consulting</option>
+                  </select>
                 </div>
                 
                 <div>

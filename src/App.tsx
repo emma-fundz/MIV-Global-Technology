@@ -14,6 +14,7 @@ import Testimonials from "./pages/Testimonials";
 import Blog from "./pages/Blog";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import Dashboard from "./pages/Dashboard";
 import ClientDashboard from "./pages/ClientDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import Admin from "./pages/Admin";
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/signup" element={<Auth />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/client-dashboard" element={<ClientDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/miv-secure-admin" element={<Admin />} />

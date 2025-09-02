@@ -9,6 +9,7 @@ import MegaMenu from './MegaMenu';
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('client');
 
   const navItems = [
     { label: 'Home', href: '/' },
@@ -19,17 +20,41 @@ const Header = () => {
   ];
 
   useEffect(() => {
-    // Check for current user
+    // Check for current user and fetch their role
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
+      
+      if (session?.user) {
+        // Fetch user role for proper dashboard routing
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        setUserRole(profile?.role || 'client');
+      }
     };
 
     getUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null);
+      
+      if (session?.user) {
+        // Fetch user role when auth state changes
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        setUserRole(profile?.role || 'client');
+      } else {
+        setUserRole('client');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -68,7 +93,7 @@ const Header = () => {
           <div className="hidden md:flex items-center space-x-3">
             <CurrencySelector />
             {user ? (
-              <Link to={user ? '/client-dashboard' : '/auth'}>
+              <Link to="/dashboard">
                 <Button variant="outline" size="sm" className="gap-2">
                   <User className="h-4 w-4" />
                   Dashboard
@@ -123,7 +148,7 @@ const Header = () => {
                   <CurrencySelector />
                 </div>
                 {user ? (
-                  <Link to="/client-dashboard" onClick={() => setIsMenuOpen(false)}>
+                  <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
                     <Button variant="outline" className="w-full gap-2">
                       <User className="h-4 w-4" />
                       Dashboard

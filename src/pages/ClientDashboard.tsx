@@ -53,6 +53,7 @@ const ClientDashboard = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -77,113 +78,53 @@ const ClientDashboard = () => {
 
   const checkAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      // Session gate - check uid before any fetch
+      const { data: s } = await supabase.auth.getSession();
+      const uid = s?.session?.user?.id;
+      if (!uid) {
+        setLoading(false);
+        setError("Not authenticated");
         navigate('/auth');
         return;
       }
 
-      setUser(session.user);
-      
-      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      setUser(s.session.user);
 
-      // Fetch profile (for completeness) with retry
-      const fetchProfile = async () => {
-        const { data: profileRow } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        if (profileRow) return profileRow;
-        await delay(500);
-        const { data: profileRetry } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        return profileRetry;
-      };
-
-      // Fetch client with retry and self-heal
-      const fetchClient = async (): Promise<Client | null> => {
-        let { data: clientRow } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (!clientRow) {
-          await delay(500);
-          ({ data: clientRow } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle());
-        }
-
-        if (!clientRow) {
-          // As a final safeguard, create client using metadata
-          const meta = session.user.user_metadata || {};
-          const fullName = meta.full_name || session.user.email;
-          const companyName = meta.company_name || '';
-          const phone = meta.phone || '';
-          const plan = (['starter','basic','standard','premium'].includes(meta.plan) ? meta.plan : 'basic') as any;
-          try {
-            await supabase.from('clients').insert({
-              user_id: session.user.id,
-              full_name: fullName,
-              email: session.user.email!,
-              company_name: companyName,
-              phone,
-              plan,
-            } as any);
-            ({ data: clientRow } = await supabase
-              .from('clients')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle());
-          } catch (e) {
-            // ignore and let caller handle
-          }
-        }
-
-        return (clientRow as any) || null;
-      };
-
-      const [profileRow, clientRow] = await Promise.all([
-        fetchProfile(),
-        fetchClient(),
+      // Profile/Client fetch with Promise.all
+      const [{ data: profile }, { data: client }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
+        supabase.from('clients').select('*').eq('user_id', uid).maybeSingle(),
       ]);
 
-      if (!profileRow && !clientRow) {
-        toast({
-          title: "Error",
-          description: "Failed to load your profile. Please try again.",
-          variant: "destructive",
-        });
+      // Debug logging
+      console.log('ClientDashboard fetch results:', { profile, client, uid });
+
+      if (!profile && !client) {
+        setError("Profile not found. We couldn't find your client profile. Please contact support.");
+        setLoading(false);
         return;
       }
 
-      if (clientRow) {
-        setClient(clientRow);
+      if (client) {
+        setClient(client);
       }
 
       // Get projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
-        .eq('client_id', (clientRow as any)?.id);
+        .eq('client_id', client?.id);
 
       if (projectsError) {
         console.error('Error fetching projects:', projectsError);
       } else {
         setProjects(projectsData || []);
       }
-    } catch (error) {
-      console.error('Auth check error:', error);
-      navigate('/auth');
-    } finally {
+
+      setLoading(false);
+    } catch (e) {
+      console.error("Dashboard load error:", e);
+      setError("Failed to load profile");
       setLoading(false);
     }
   };
@@ -212,6 +153,29 @@ const ClientDashboard = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
           <p>Loading your dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Error Loading Dashboard</CardTitle>
+            <CardDescription>
+              {error}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button onClick={() => { setError(null); setLoading(true); checkAuth(); }} className="w-full">
+              Retry
+            </Button>
+            <Button onClick={handleLogout} variant="outline" className="w-full">
+              Logout
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

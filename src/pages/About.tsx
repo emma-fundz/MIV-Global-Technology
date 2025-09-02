@@ -1,25 +1,72 @@
+import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Users, Target, Award, Globe } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  picture_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const About = () => {
-  const teamMembers = [
-    {
-      name: "Adebayo Johnson",
-      role: "Founder & CEO",
-      description: "Visionary leader with 10+ years in tech entrepreneurship across Africa."
-    },
-    {
-      name: "Chioma Okafor",
-      role: "Head of Digital Solutions",
-      description: "Full-stack developer specializing in scalable web and mobile applications."
-    },
-    {
-      name: "Kwame Asante",
-      role: "Creative Director",
-      description: "Brand strategist with expertise in African market positioning."
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      // Fallback to hardcoded data if database fails
+      setEmployees([
+        {
+          id: '1',
+          name: "Uchenna Jasper Okeke",
+          role: "Sales Manager",
+          phone: "+2349096569574",
+          picture_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: "Chianugo Elizabeth",
+          role: "CMO",
+          phone: "+2349161223023",
+          picture_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: '3',
+          name: "Elijah Opeyemi",
+          role: "TBD",
+          phone: "07068990444",
+          picture_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const milestones = [
     { year: "2020", event: "MIV Global Technology Founded" },
@@ -132,24 +179,40 @@ const About = () => {
       <section className="py-16 bg-muted">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Meet Our Leadership Team</h2>
+            <h2 className="text-3xl font-bold mb-4">Meet Our Team</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Experienced professionals with deep expertise in African markets and global business practices.
+              Experienced professionals dedicated to empowering African entrepreneurs and businesses.
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {teamMembers.map((member, index) => (
-              <div key={index} className="bg-background p-6 rounded-lg text-center hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 bg-gradient-to-br from-gold to-gold-dark rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <Users className="h-12 w-12 text-black" />
+          {loading ? (
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold"></div>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {employees.map((employee) => (
+                <div key={employee.id} className="bg-background p-6 rounded-lg text-center hover:shadow-lg transition-shadow">
+                  <div className="w-24 h-24 bg-gradient-to-br from-gold to-gold-dark rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                    {employee.picture_url ? (
+                      <img 
+                        src={employee.picture_url} 
+                        alt={employee.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Users className="h-12 w-12 text-black" />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">{employee.name}</h3>
+                  <p className="text-gold font-medium mb-3">{employee.role}</p>
+                  <p className="text-muted-foreground text-sm">
+                    Contact: {employee.phone}
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{member.name}</h3>
-                <p className="text-gold font-medium mb-3">{member.role}</p>
-                <p className="text-muted-foreground text-sm">{member.description}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
