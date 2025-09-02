@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,41 +16,62 @@ const Dashboard = () => {
 
   const routeToCorrectDashboard = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       // Session gate - check uid before any fetch
       const { data: s } = await supabase.auth.getSession();
       const uid = s?.session?.user?.id;
+      
       if (!uid) {
+        console.log('No session found, redirecting to auth');
         setLoading(false);
-        setError("Not authenticated");
         navigate('/auth');
         return;
       }
 
-      // Fetch profile to determine role
-      const { data: profile } = await supabase
+      // Fetch profile with timeout to determine role
+      const profilePromise = supabase
         .from('profiles')
         .select('role')
         .eq('user_id', uid)
         .maybeSingle();
 
-      // Debug logging
-      console.log('Dashboard router fetch results:', { profile, uid });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      const { data: profile, error: profileError } = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('Dashboard router fetch results:', { profile, uid, profileError });
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        setError('Failed to load profile: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
 
       if (!profile) {
-        setError("Profile not found. Please contact support.");
-        setLoading(false);
+        console.log('No profile found, defaulting to client dashboard');
+        navigate('/client-dashboard');
         return;
       }
 
       // Route based on role
       if (profile.role === 'admin' || profile.role === 'team') {
+        console.log('Routing to admin dashboard for role:', profile.role);
         navigate('/admin-dashboard');
       } else {
+        console.log('Routing to client dashboard for role:', profile.role);
         navigate('/client-dashboard');
       }
     } catch (e) {
       console.error("Dashboard routing error:", e);
-      setError("Failed to load profile");
+      setError("Failed to load dashboard: " + (e as Error).message);
       setLoading(false);
     }
   };

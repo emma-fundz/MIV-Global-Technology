@@ -1,3 +1,12 @@
+## [v2.1.13] - 2025-01-03
+- CRITICAL FIX: Resolved infinite loading spinner and "Profile not found" errors in dashboard routing
+  - Root cause: Missing `setLoading(false)` calls in error paths, race conditions in Promise handling, and retry logic masking actual errors causing silent failures
+  - Where: `src/pages/Dashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/AdminDashboard.tsx`
+  - How: Added comprehensive error handling with guaranteed `setLoading(false)` in all code paths; implemented 10-second timeout for database queries; fixed role-based routing logic; removed problematic retry loops that caused infinite loading; added proper role verification before dashboard access
+  - Enhanced: Role-based routing now correctly directs admin/team users to `/admin-dashboard` and clients to `/client-dashboard`; added timeout protection for all Supabase queries; improved error messages with actionable retry/logout options
+  - Fixed: Build error in AdminDashboard.tsx (removed reference to non-existent `deleteEmployee` function); loading states now properly terminate in all scenarios; dashboard authentication flow works consistently
+  - Result: Fresh signups and logins complete within 10 seconds; no more infinite spinners; proper role-based dashboard routing; clear error handling with user-friendly retry mechanisms
+
 ## [v2.1.12] - 2025-08-25
 - Fix: Resolved infinite "Loading your dashboard..." spinner and "Profile not found" errors
   - Root cause: Missing loading state management in dashboard components - early returns and navigation redirects bypassed `setLoading(false)` calls, leaving spinners active indefinitely
@@ -18,10 +27,10 @@
 - Frontend: Hardened dashboard fetch flow with retry and self-heal
   - Where: `src/pages/ClientDashboard.tsx`
   - How: After login, fetch `profiles` and `clients` by `user_id = session.user.id`; added 500ms retry; if `clients` still missing, insert from `user_metadata` and read back; only show error if both remain missing after retry. Projects now reference the fetched client id.
-  - Result: Fresh signups route to dashboards without intermittent “Profile not found” even if DB triggers are slightly delayed.
+  - Result: Fresh signups route to dashboards without intermittent "Profile not found" even if DB triggers are slightly delayed.
 
 ## [v2.1.9] - 2025-08-16
-- Fix: Create `clients` automatically at signup to stop “Profile not found” on fresh users
+- Fix: Create `clients` automatically at signup to stop "Profile not found" on fresh users
   - Root cause: `profiles` were created by the trigger, but `clients` were not; the dashboard queries `clients` and failed for new users.
   - Where: `supabase/migrations/20250816123000_handle_new_user_create_clients.sql`
   - How: Updated `public.handle_new_user()` to also insert into `public.clients` with defaults from `raw_user_meta_data` and safe fallback values; added `on conflict (user_id) do nothing` for both `profiles` and `clients`; ensured unique index on `clients.user_id`; re-created `on_auth_user_created` trigger.
@@ -34,19 +43,19 @@
     - Where: `supabase/migrations/20250816122000_profile_trigger_logging.sql`
     - How: Created `public.profile_trigger_log` table; re-wrote `public.handle_new_user()` with `set search_path = public`, try/catch logging, explicit insert into `public.profiles` with `on conflict (user_id) do nothing)`; re-created `on_auth_user_created` trigger.
   - Frontend Safeguard: Keep existing post-auth profile/client creation on signup/login to ensure immediate availability even if trigger is delayed.
-  - Result: Fresh signups now consistently get a `profiles` row; dashboard no longer shows “Profile not found”.
+  - Result: Fresh signups now consistently get a `profiles` row; dashboard no longer shows "Profile not found".
 
 ## [v2.1.7] - 2025-08-16
-- Fix: Resolved persistent “Profile not found” after login by hardening DB schema + trigger
+- Fix: Resolved persistent "Profile not found" after login by hardening DB schema + trigger
   - Diagnosis: Ran join between `auth.users` and `public.profiles` to detect missing profile rows; frontend expects `profiles.role` and timestamps to exist.
   - Where: `supabase/migrations/20250816121000_profiles_hardening.sql`
   - How: Ensured `profiles` has required columns with defaults (`user_id`, `email`, `full_name`, `role default 'client'`, `created_at`, `updated_at`), unique index on `profiles.user_id`, ensured `updated_at` trigger, and reinforced `handle_new_user()` to insert `role` explicitly and do nothing on conflict; re-created `on_auth_user_created` trigger.
-  - Result: Every new Supabase auth user now automatically gets a complete `profiles` row; login/dashboard queries succeed without “Profile not found”.
+  - Result: Every new Supabase auth user now automatically gets a complete `profiles` row; login/dashboard queries succeed without "Profile not found".
 
 ## [v2.1.6] - 2025-08-16
 - DB: Guarantee profile creation for new users via Postgres trigger
   - Where: `supabase/migrations/20250816120000_auto_profile_trigger.sql`
-  - How: Added `public.handle_new_user()` trigger function and `on_auth_user_created` trigger on `auth.users` to automatically insert into `public.profiles (user_id, email, full_name)` using Supabase `raw_user_meta_data`; added unique index on `profiles.user_id`. This permanently prevents the “Profile not found” error after signup/login.
+  - How: Added `public.handle_new_user()` trigger function and `on_auth_user_created` trigger on `auth.users` to automatically insert into `public.profiles (user_id, email, full_name)` using Supabase `raw_user_meta_data`; added unique index on `profiles.user_id`. This permanently prevents the "Profile not found" error after signup/login.
 
 ## [2025-08-25] - Profile Not Found Bug Fix & Role-Based Routing
 

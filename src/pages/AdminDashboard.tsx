@@ -1,39 +1,51 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import DashboardSidebar from '@/components/DashboardSidebar';
 import { 
   Users, 
-  Mail, 
+  Package, 
+  Calendar, 
+  TrendingUp, 
   BarChart, 
-  Settings, 
-  FileText, 
-  Eye, 
-  Edit, 
-  Trash2,
-  MessageSquare,
-  Calendar,
-  TrendingUp,
+  MessageSquare, 
   LogOut,
+  Bell,
+  Settings,
+  Menu,
   Plus,
-  Search,
-  Filter
+  Edit,
+  Trash2,
+  CheckCircle2,
+  Clock,
+  User,
+  Phone,
+  Mail,
+  Building,
+  Eye
 } from 'lucide-react';
+
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: 'admin' | 'team' | 'client';
+}
 
 interface Client {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   company_name: string;
-  plan: string;
+  plan: 'starter' | 'basic' | 'standard' | 'premium';
   signup_date: string;
   status: string;
 }
@@ -42,17 +54,15 @@ interface Project {
   id: string;
   title: string;
   description: string;
-  client_id: string;
-  assigned_to: string;
   package: string;
   status: string;
   progress: number;
   notes: string;
-  clients: { full_name: string };
-  profiles: { full_name: string };
+  client_id: string;
+  assigned_to: string;
 }
 
-interface Message {
+interface ContactSubmission {
   id: string;
   name: string;
   email: string;
@@ -64,109 +74,68 @@ interface Message {
   created_at: string;
 }
 
+interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  featured: boolean;
+  published: boolean;
+  created_at: string;
+}
+
 interface Employee {
   id: string;
   name: string;
   role: string;
   phone: string;
-  picture_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string | null;
-  content: string;
-  featured_image: string | null;
-  category: string | null;
-  tags: string[] | null;
-  author_id: string | null;
-  status: string;
-  featured: boolean | null;
-  views: number | null;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
+  picture_url: string;
 }
 
 const AdminDashboard = () => {
   const [user, setUser] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [contacts, setContacts] = useState<ContactSubmission[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Form states for new project
-  const [newProject, setNewProject] = useState<{
-    title: string;
-    description: string;
-    client_id: string;
-    assigned_to: string;
-    package: 'starter' | 'basic' | 'standard' | 'premium';
-    status: 'pending' | 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';
-    progress: number;
-    notes: string;
-  }>({
+  // New project form state
+  const [newProject, setNewProject] = useState({
     title: '',
     description: '',
-    client_id: '',
-    assigned_to: '',
     package: 'basic',
-    status: 'pending',
-    progress: 0,
-    notes: ''
+    client_id: '',
+    assigned_to: ''
   });
 
-  // Form states for new employee
-  const [newEmployee, setNewEmployee] = useState<{
-    name: string;
-    role: string;
-    phone: string;
-    picture_url: string;
-  }>({
+  // New blog post form state
+  const [newBlogPost, setNewBlogPost] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    category: '',
+    featured: false
+  });
+
+  // New employee form state
+  const [newEmployee, setNewEmployee] = useState({
     name: '',
     role: '',
     phone: '',
     picture_url: ''
   });
 
+  // Edit states
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-
-  // Form states for new blog post
-  const [newBlogPost, setNewBlogPost] = useState<{
-    title: string;
-    slug: string;
-    excerpt: string;
-    content: string;
-    featured_image: string;
-    category: string;
-    tags: string;
-    status: 'draft' | 'published';
-    featured: boolean;
-  }>({
-    title: '',
-    slug: '',
-    excerpt: '',
-    content: '',
-    featured_image: '',
-    category: '',
-    tags: '',
-    status: 'draft',
-    featured: false
-  });
-
-  const [editingBlogPost, setEditingBlogPost] = useState<BlogPost | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -174,116 +143,170 @@ const AdminDashboard = () => {
 
   const checkAuth = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       // Session gate - check uid before any fetch
       const { data: s } = await supabase.auth.getSession();
       const uid = s?.session?.user?.id;
+      
       if (!uid) {
+        console.log('No session found, redirecting to auth');
         setLoading(false);
-        setError("Not authenticated");
         navigate('/auth');
         return;
       }
 
       setUser(s.session.user);
 
-      // Profile/Client fetch with Promise.all
-      const [{ data: profile }, { data: client }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('clients').select('*').eq('user_id', uid).maybeSingle(),
+      // Fetch profile with timeout
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      const { data: profile, error: profileError } = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('AdminDashboard fetch results:', { profile, uid, profileError });
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        setError('Failed to load profile: ' + profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!profile) {
+        console.log('No profile found, redirecting to client dashboard');
+        setError('Admin profile not found. Redirecting to client dashboard.');
+        setTimeout(() => navigate('/client-dashboard'), 2000);
+        setLoading(false);
+        return;
+      }
+
+      // Check admin/team role
+      if (profile.role !== 'admin' && profile.role !== 'team') {
+        console.log('User is not admin/team, redirecting to client dashboard');
+        setError('Access denied. Redirecting to client dashboard.');
+        setTimeout(() => navigate('/client-dashboard'), 2000);
+        setLoading(false);
+        return;
+      }
+
+      setProfile(profile);
+
+      // Load all data concurrently
+      await Promise.all([
+        loadClients(),
+        loadProjects(),
+        loadContacts(),
+        loadBlogPosts(),
+        loadEmployees()
       ]);
 
-      // Debug logging
-      console.log('AdminDashboard fetch results:', { profile, client, uid });
-
-      if (!profile && !client) {
-        setError("Profile not found. We couldn't find your profile. Please contact support.");
-        setLoading(false);
-        return;
-      }
-
-      if (!profile || (profile.role !== 'admin' && profile.role !== 'team')) {
-        setLoading(false);
-        navigate('/client-dashboard');
-        return;
-      }
-
-      setUserProfile(profile);
-      await loadDashboardData();
       setLoading(false);
     } catch (e) {
-      console.error("Dashboard load error:", e);
-      setError("Failed to load profile");
+      console.error("Admin dashboard load error:", e);
+      setError("Failed to load admin dashboard: " + (e as Error).message);
       setLoading(false);
     }
   };
 
-  const loadDashboardData = async () => {
+  const loadClients = async () => {
     try {
-      // Load clients
-      const { data: clientsData, error: clientsError } = await supabase
+      const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (clientsError) throw clientsError;
-      setClients(clientsData || []);
+      if (error) {
+        console.error('Error loading clients:', error);
+        return;
+      }
 
-      // Load projects with client and assigned user info
-      const { data: projectsData, error: projectsError } = await supabase
+      setClients(data || []);
+    } catch (e) {
+      console.error('Error loading clients:', e);
+    }
+  };
+
+  const loadProjects = async () => {
+    try {
+      const { data, error } = await supabase
         .from('projects')
-        .select(`
-          *,
-          clients!inner(full_name),
-          profiles(full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (projectsError) throw projectsError;
-      setProjects(projectsData || []);
-
-      // Load messages
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (messagesError) throw messagesError;
-      setMessages(messagesData || []);
+      if (error) {
+        console.error('Error loading projects:', error);
+        return;
+      }
 
-      // Load team members
-      const { data: teamData, error: teamError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('role', ['admin', 'team']);
+      setProjects(data || []);
+    } catch (e) {
+      console.error('Error loading projects:', e);
+    }
+  };
 
-      if (teamError) throw teamError;
-      setTeamMembers(teamData || []);
-
-      // Load employees
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('employees')
+  const loadContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contact_submissions')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (employeesError) throw employeesError;
-      setEmployees(employeesData || []);
+      if (error) {
+        console.error('Error loading contacts:', error);
+        return;
+      }
 
-      // Load blog posts
-      const { data: blogPostsData, error: blogPostsError } = await supabase
+      setContacts(data || []);
+    } catch (e) {
+      console.error('Error loading contacts:', e);
+    }
+  };
+
+  const loadBlogPosts = async () => {
+    try {
+      const { data, error } = await supabase
         .from('blog_posts')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (blogPostsError) throw blogPostsError;
-      setBlogPosts(blogPostsData || []);
+      if (error) {
+        console.error('Error loading blog posts:', error);
+        return;
+      }
 
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data. Please refresh the page.",
-        variant: "destructive",
-      });
+      setBlogPosts(data || []);
+    } catch (e) {
+      console.error('Error loading blog posts:', e);
+    }
+  };
+
+  const loadEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading employees:', error);
+        return;
+      }
+
+      setEmployees(data || []);
+    } catch (e) {
+      console.error('Error loading employees:', e);
     }
   };
 
@@ -293,108 +316,191 @@ const AdminDashboard = () => {
   };
 
   const createProject = async () => {
-    if (!newProject.title || !newProject.client_id) {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([{
+          ...newProject,
+          status: 'pending',
+          progress: 0
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating project:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create project",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setProjects([data, ...projects]);
+      setNewProject({ title: '', description: '', package: 'basic', client_id: '', assigned_to: '' });
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
+        title: "Success",
+        description: "Project created successfully",
+      });
+    } catch (e) {
+      console.error('Error creating project:', e);
+      toast({
+        title: "Error",
+        description: "Failed to create project",
         variant: "destructive",
       });
-      return;
     }
+  };
 
+  const updateProjectStatus = async (projectId: string, status: string) => {
     try {
       const { error } = await supabase
         .from('projects')
-        .insert([newProject as any]);
+        .update({ status })
+        .eq('id', projectId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating project:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update project",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setProjects(projects.map(p => 
+        p.id === projectId ? { ...p, status } : p
+      ));
 
       toast({
         title: "Success",
-        description: "Project created successfully.",
+        description: "Project updated successfully",
       });
-
-      setNewProject({
-        title: '',
-        description: '',
-        client_id: '',
-        assigned_to: '',
-        package: 'basic',
-        status: 'pending',
-        progress: 0,
-        notes: ''
-      });
-
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error('Error updating project:', e);
     }
   };
 
   const updateMessageStatus = async (messageId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('messages')
+        .from('contact_submissions')
         .update({ status })
         .eq('id', messageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating message:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update message",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setContacts(contacts.map(c => 
+        c.id === messageId ? { ...c, status } : c
+      ));
 
       toast({
         title: "Success",
-        description: "Message status updated successfully.",
+        description: "Message updated successfully",
       });
+    } catch (e) {
+      console.error('Error updating message:', e);
+    }
+  };
 
-      await loadDashboardData();
-    } catch (error: any) {
+  const createBlogPost = async () => {
+    try {
+      const slug = newBlogPost.title.toLowerCase().replace(/\s+/g, '-');
+      
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .insert([{
+          ...newBlogPost,
+          slug,
+          published: false,
+          read_time: '5 min read',
+          image_url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop'
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating blog post:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create blog post",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setBlogPosts([data, ...blogPosts]);
+      setNewBlogPost({ title: '', excerpt: '', content: '', category: '', featured: false });
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+        title: "Success",
+        description: "Blog post created successfully",
       });
+    } catch (e) {
+      console.error('Error creating blog post:', e);
+    }
+  };
+
+  const toggleBlogPostStatus = async (postId: string, published: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('blog_posts')
+        .update({ published })
+        .eq('id', postId);
+
+      if (error) {
+        console.error('Error updating blog post:', error);
+        return;
+      }
+
+      setBlogPosts(blogPosts.map(post => 
+        post.id === postId ? { ...post, published } : post
+      ));
+
+      toast({
+        title: "Success",
+        description: `Blog post ${published ? 'published' : 'unpublished'} successfully`,
+      });
+    } catch (e) {
+      console.error('Error updating blog post:', e);
     }
   };
 
   const createEmployee = async () => {
-    if (!newEmployee.name || !newEmployee.role || !newEmployee.phone) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('employees')
-        .insert([newEmployee]);
+        .insert([newEmployee])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating employee:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create employee",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      setEmployees([data, ...employees]);
+      setNewEmployee({ name: '', role: '', phone: '', picture_url: '' });
       toast({
         title: "Success",
-        description: "Employee added successfully.",
+        description: "Employee created successfully",
       });
-
-      setNewEmployee({
-        name: '',
-        role: '',
-        phone: '',
-        picture_url: ''
-      });
-
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error('Error creating employee:', e);
     }
   };
 
@@ -412,141 +518,68 @@ const AdminDashboard = () => {
         })
         .eq('id', editingEmployee.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating employee:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update employee",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      toast({
-        title: "Success",
-        description: "Employee updated successfully.",
-      });
-
+      setEmployees(employees.map(emp => 
+        emp.id === editingEmployee.id ? editingEmployee : emp
+      ));
       setEditingEmployee(null);
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const createBlogPost = async () => {
-    if (!newBlogPost.title || !newBlogPost.content) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in title and content fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('blog_posts')
-        .insert([{
-          title: newBlogPost.title,
-          slug: newBlogPost.slug,
-          excerpt: newBlogPost.excerpt || null,
-          content: newBlogPost.content,
-          featured_image: newBlogPost.featured_image || null,
-          category: newBlogPost.category || null,
-          tags: newBlogPost.tags ? newBlogPost.tags.split(',').map(t => t.trim()) : null,
-          status: newBlogPost.status,
-          featured: newBlogPost.featured,
-          author_id: user?.id,
-          published_at: newBlogPost.status === 'published' ? new Date().toISOString() : null
-        }]);
-
-      if (error) throw error;
-
       toast({
         title: "Success",
-        description: "Blog post created successfully.",
+        description: "Employee updated successfully",
       });
-
-      setNewBlogPost({
-        title: '',
-        slug: '',
-        excerpt: '',
-        content: '',
-        featured_image: '',
-        category: '',
-        tags: '',
-        status: 'draft',
-        featured: false
-      });
-
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error('Error updating employee:', e);
     }
   };
 
-  const updateBlogPost = async () => {
-    if (!editingBlogPost) return;
-
+  const handleDeleteEmployee = async (employeeId: string) => {
     try {
       const { error } = await supabase
-        .from('blog_posts')
-        .update({
-          title: editingBlogPost.title,
-          slug: editingBlogPost.slug,
-          excerpt: editingBlogPost.excerpt,
-          content: editingBlogPost.content,
-          featured_image: editingBlogPost.featured_image,
-          category: editingBlogPost.category,
-          tags: editingBlogPost.tags,
-          status: editingBlogPost.status,
-          featured: editingBlogPost.featured,
-          published_at: editingBlogPost.status === 'published' && !editingBlogPost.published_at 
-            ? new Date().toISOString() 
-            : editingBlogPost.published_at
-        })
-        .eq('id', editingBlogPost.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Blog post updated successfully.",
-      });
-
-      setEditingBlogPost(null);
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const deleteBlogPost = async (postId: string) => {
-    try {
-      const { error } = await supabase
-        .from('blog_posts')
+        .from('employees')
         .delete()
-        .eq('id', postId);
+        .eq('id', employeeId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting employee:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete employee",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      setEmployees(employees.filter(emp => emp.id !== employeeId));
       toast({
         title: "Success",
-        description: "Blog post deleted successfully.",
+        description: "Employee deleted successfully",
       });
+    } catch (e) {
+      console.error('Error deleting employee:', e);
+    }
+  };
 
-      await loadDashboardData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500';
+      case 'planning': return 'bg-blue-500';
+      case 'in_progress': return 'bg-purple-500';
+      case 'review': return 'bg-orange-500';
+      case 'completed': return 'bg-green-500';
+      case 'on_hold': return 'bg-red-500';
+      case 'new': return 'bg-blue-500';
+      case 'contacted': return 'bg-orange-500';
+      case 'converted': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
   };
 
@@ -555,7 +588,7 @@ const AdminDashboard = () => {
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
-          <p>Loading your dashboard...</p>
+          <p>Loading admin dashboard...</p>
         </div>
       </div>
     );
@@ -584,172 +617,232 @@ const AdminDashboard = () => {
     );
   }
 
-  const analytics = {
-    totalClients: clients.length,
-    activeProjects: projects.filter(p => p.status === 'in_progress').length,
-    pendingContacts: messages.filter(c => c.status === 'new').length,
-    conversionRate: clients.length > 0 ? ((clients.length / (clients.length + messages.length)) * 100).toFixed(1) : '0'
-  };
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>
+              You don't have permission to access the admin dashboard.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/client-dashboard')} className="w-full">
+              Go to Client Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-return (
-  <div className="min-h-screen bg-muted">
-    {/* Header */}
-    <div className="bg-background border-b px-4 sm:px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
-            <img 
-              src="/lovable-uploads/7dbec63c-b4f2-4c1e-bfc4-c7fd0dff4d18.png" 
-              alt="MIV Global Technology" 
-              className="h-6 w-6 object-contain"
-            />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">MIV Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome back, {userProfile?.full_name} ({userProfile?.role})
-            </p>
+  return (
+    <div className="min-h-screen bg-muted flex">
+      {/* Sidebar */}
+      <DashboardSidebar 
+        isOpen={sidebarOpen} 
+        onToggle={() => setSidebarOpen(!sidebarOpen)} 
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        {/* Top Header */}
+        <div className="bg-background border-b px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold">Admin Dashboard</h1>
+                <p className="text-sm text-muted-foreground">
+                  Welcome back, {profile.full_name}! • {profile.role}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
-        <Button variant="outline" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-2" />
-          Logout
-        </Button>
-      </div>
-    </div>
 
-    <div className="p-4 sm:p-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="contacts">Contact Forms</TabsTrigger>
-          <TabsTrigger value="employees">Team Directory</TabsTrigger>
-          <TabsTrigger value="blog">Blog Management</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">Total Clients</span>
-                </div>
-                <div className="text-2xl font-bold">{analytics.totalClients}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <BarChart className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-muted-foreground">Active Projects</span>
-                </div>
-                <div className="text-2xl font-bold">{analytics.activeProjects}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <Mail className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm text-muted-foreground">Pending Contacts</span>
-                </div>
-                <div className="text-2xl font-bold">{analytics.pendingContacts}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm text-muted-foreground">Conversion Rate</span>
-                </div>
-                <div className="text-2xl font-bold">{analytics.conversionRate}%</div>
-              </CardContent>
-            </Card>
+        {/* Tab Navigation */}
+        <div className="bg-background border-b px-4 sm:px-6">
+          <div className="flex space-x-8">
+            {[
+              { id: 'overview', name: 'Overview', icon: BarChart },
+              { id: 'clients', name: 'Clients', icon: Users },
+              { id: 'projects', name: 'Projects', icon: Package },
+              { id: 'messages', name: 'Messages', icon: MessageSquare },
+              { id: 'blog', name: 'Blog', icon: Edit },
+              { id: 'team', name: 'Team Directory', icon: User }
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                    activeTab === tab.id
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.name}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {messages.slice(0, 5).map((message) => (
-                  <div key={message.id} className="flex items-center gap-3 p-3 border rounded">
-                    <MessageSquare className="h-4 w-4 text-blue-500" />
-                    <div className="flex-1">
-                      <p className="font-medium">New contact from {message.name}</p>
-                      <p className="text-sm text-muted-foreground">{message.email} • {message.service}</p>
+        {/* Content Area */}
+        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto">
+          {activeTab === 'overview' && (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm text-muted-foreground">Total Clients</span>
                     </div>
-                    <Badge variant={message.status === 'new' ? 'default' : 'secondary'}>
-                      {message.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    <div className="text-2xl font-bold">{clients.length}</div>
+                    <div className="text-xs text-blue-500">+12% from last month</div>
+                  </CardContent>
+                </Card>
 
-          {/* Clients Tab */}
-          <TabsContent value="clients" className="space-y-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="h-4 w-4 text-green-500" />
+                      <span className="text-sm text-muted-foreground">Active Projects</span>
+                    </div>
+                    <div className="text-2xl font-bold">{projects.filter(p => p.status === 'in_progress').length}</div>
+                    <div className="text-xs text-green-500">+8% from last month</div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm text-muted-foreground">Pending Messages</span>
+                    </div>
+                    <div className="text-2xl font-bold">{contacts.filter(c => c.status === 'new').length}</div>
+                    <div className="text-xs text-purple-500">-5% from last month</div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm text-muted-foreground">Conversion Rate</span>
+                    </div>
+                    <div className="text-2xl font-bold">24%</div>
+                    <div className="text-xs text-orange-500">+3% from last month</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Clients</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {clients.slice(0, 5).map((client) => (
+                        <div key={client.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{client.full_name}</p>
+                            <p className="text-sm text-muted-foreground">{client.company_name}</p>
+                          </div>
+                          <Badge className="bg-blue-500 text-white">
+                            {client.plan}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Project Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {projects.slice(0, 5).map((project) => (
+                        <div key={project.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{project.title}</p>
+                            <Progress value={project.progress} className="w-24 h-2 mt-1" />
+                          </div>
+                          <Badge className={`${getStatusColor(project.status)} text-white`}>
+                            {project.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'clients' && (
             <Card>
               <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Client Management</CardTitle>
-                    <CardDescription>View and manage all registered clients</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filter
-                    </Button>
-                  </div>
-                </div>
+                <CardTitle>Client Management</CardTitle>
+                <CardDescription>
+                  Manage all registered clients and their subscriptions
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {clients.map((client) => (
                     <div key={client.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <div>
                           <h3 className="font-semibold">{client.full_name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {client.company_name} • {client.email}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{client.email}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline">{client.plan}</Badge>
-                          <Badge 
-                            variant={client.status === 'active' ? 'default' : 'secondary'}
-                          >
+                          <Badge className="bg-blue-500 text-white">
+                            {client.plan}
+                          </Badge>
+                          <Badge variant="outline">
                             {client.status}
                           </Badge>
                         </div>
                       </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Joined: {new Date(client.signup_date).toLocaleDateString()}</span>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Company:</span>
+                          <span className="ml-2">{client.company_name || 'Not provided'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Joined:</span>
+                          <span className="ml-2">{new Date(client.signup_date).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
@@ -757,16 +850,76 @@ return (
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Projects Tab */}
-          <TabsContent value="projects" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Projects List */}
-              <Card className="lg:col-span-2">
+          {activeTab === 'projects' && (
+            <>
+              <Card>
                 <CardHeader>
-                  <CardTitle>Project Management</CardTitle>
-                  <CardDescription>Track and manage client projects</CardDescription>
+                  <CardTitle>Create New Project</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Project Title</label>
+                      <input
+                        type="text"
+                        value={newProject.title}
+                        onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="Enter project title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Package</label>
+                      <select
+                        value={newProject.package}
+                        onChange={(e) => setNewProject({ ...newProject, package: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="basic">Basic</option>
+                        <option value="standard">Standard</option>
+                        <option value="premium">Premium</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Client</label>
+                      <select
+                        value={newProject.client_id}
+                        onChange={(e) => setNewProject({ ...newProject, client_id: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="">Select Client</option>
+                        {clients.map((client) => (
+                          <option key={client.id} value={client.id}>
+                            {client.full_name} - {client.company_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium mb-2">Description</label>
+                      <textarea
+                        value={newProject.description}
+                        onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        rows={3}
+                        placeholder="Project description"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Button onClick={createProject} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Project
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Projects</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -775,558 +928,370 @@ return (
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <h3 className="font-semibold">{project.title}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Client: {project.clients?.full_name} • 
-                              Assigned: {project.profiles?.full_name || 'Unassigned'}
-                            </p>
+                            <p className="text-sm text-muted-foreground">{project.description}</p>
                           </div>
-                          <Badge variant="outline">{project.status}</Badge>
-                        </div>
-                        <p className="text-sm mb-3">{project.description}</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Progress: {project.progress}%</span>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-3 w-3 mr-1" />
-                              Update
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={project.status}
+                              onChange={(e) => updateProjectStatus(project.id, e.target.value)}
+                              className="p-1 border rounded text-sm"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="planning">Planning</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="review">Review</option>
+                              <option value="completed">Completed</option>
+                              <option value="on_hold">On Hold</option>
+                            </select>
+                            <Badge className={`${getStatusColor(project.status)} text-white`}>
+                              {project.status.replace('_', ' ')}
+                            </Badge>
                           </div>
                         </div>
+                        
+                        <div className="mb-3">
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>Progress</span>
+                            <span>{project.progress}%</span>
+                          </div>
+                          <Progress value={project.progress} className="h-2" />
+                        </div>
+
+                        {project.notes && (
+                          <div className="text-sm text-muted-foreground">
+                            <strong>Notes:</strong> {project.notes}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
+            </>
+          )}
 
-              {/* Create New Project */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create New Project</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="project-title">Project Title</Label>
-                    <Input
-                      id="project-title"
-                      value={newProject.title}
-                      onChange={(e) => setNewProject({...newProject, title: e.target.value})}
-                      placeholder="Enter project title"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="project-client">Client</Label>
-                    <Select value={newProject.client_id} onValueChange={(value) => setNewProject({...newProject, client_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="project-assigned">Assign To</Label>
-                    <Select value={newProject.assigned_to} onValueChange={(value) => setNewProject({...newProject, assigned_to: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select team member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="project-description">Description</Label>
-                    <Textarea
-                      id="project-description"
-                      value={newProject.description}
-                      onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                      placeholder="Enter project description"
-                    />
-                  </div>
-
-                  <Button onClick={createProject} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Project
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Messages Tab */}
-          <TabsContent value="contacts" className="space-y-6">
+          {activeTab === 'messages' && (
             <Card>
               <CardHeader>
                 <CardTitle>Contact Messages</CardTitle>
-                <CardDescription>Manage incoming client inquiries</CardDescription>
+                <CardDescription>
+                  Manage contact form submissions and lead responses
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div key={message.id} className="border rounded-lg p-4">
+                  {contacts.map((contact) => (
+                    <div key={contact.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold">{message.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {message.company} • {message.email}
-                          </p>
+                          <h3 className="font-semibold">{contact.name}</h3>
+                          <p className="text-sm text-muted-foreground">{contact.email}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={message.status === 'new' ? 'destructive' : 'default'}
+                          <select
+                            value={contact.status}
+                            onChange={(e) => updateMessageStatus(contact.id, e.target.value)}
+                            className="p-1 border rounded text-sm"
                           >
-                            {message.status}
+                            <option value="new">New</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="converted">Converted</option>
+                          </select>
+                          <Badge className={`${getStatusColor(contact.status)} text-white`}>
+                            {contact.status}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(message.created_at).toLocaleDateString()}
-                          </span>
                         </div>
                       </div>
-                      <div className="mb-3">
-                        <p className="text-sm mb-1"><strong>Service:</strong> {message.service}</p>
-                        <p className="text-sm mb-1"><strong>Phone:</strong> {message.phone}</p>
-                        <p className="text-sm"><strong>Message:</strong> {message.message}</p>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div>
+                          <span className="text-muted-foreground">Company:</span>
+                          <span className="ml-2">{contact.company || 'Not provided'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Phone:</span>
+                          <span className="ml-2">{contact.phone || 'Not provided'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Service:</span>
+                          <span className="ml-2">{contact.service || 'General Inquiry'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Date:</span>
+                          <span className="ml-2">{new Date(contact.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => updateMessageStatus(message.id, 'contacted')}
-                          disabled={message.status !== 'new'}
-                        >
-                          Mark as Contacted
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => updateMessageStatus(message.id, 'converted')}
-                        >
-                          Mark as Converted
-                        </Button>
+
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Message:</span>
+                        <p className="mt-1 p-2 bg-muted rounded">{contact.message}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          {/* Employee Directory Tab */}
-          <TabsContent value="employees" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Employee List */}
-              <Card className="lg:col-span-2">
+          {activeTab === 'blog' && (
+            <>
+              <Card>
                 <CardHeader>
-                  <CardTitle>Team Directory</CardTitle>
-                  <CardDescription>Manage employee information for the website</CardDescription>
+                  <CardTitle>Create New Blog Post</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {employees.map((employee) => (
-                      <div key={employee.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
-                              <Users className="h-6 w-6 text-accent" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{employee.name}</h3>
-                              <p className="text-sm text-muted-foreground">{employee.role}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => setEditingEmployee(employee)}
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => deleteEmployee(employee.id)}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          <p>Phone: {employee.phone}</p>
-                          <p>Added: {new Date(employee.created_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    ))}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Title</label>
+                      <input
+                        type="text"
+                        value={newBlogPost.title}
+                        onChange={(e) => setNewBlogPost({ ...newBlogPost, title: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="Enter blog post title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Category</label>
+                      <input
+                        type="text"
+                        value={newBlogPost.category}
+                        onChange={(e) => setNewBlogPost({ ...newBlogPost, category: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="e.g., Technology, Business, Marketing"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Excerpt</label>
+                      <textarea
+                        value={newBlogPost.excerpt}
+                        onChange={(e) => setNewBlogPost({ ...newBlogPost, excerpt: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        rows={2}
+                        placeholder="Brief description of the post"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Content</label>
+                      <textarea
+                        value={newBlogPost.content}
+                        onChange={(e) => setNewBlogPost({ ...newBlogPost, content: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        rows={6}
+                        placeholder="Full blog post content"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="featured"
+                        checked={newBlogPost.featured}
+                        onChange={(e) => setNewBlogPost({ ...newBlogPost, featured: e.target.checked })}
+                      />
+                      <label htmlFor="featured" className="text-sm">Featured post</label>
+                    </div>
+                    <Button onClick={createBlogPost} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Blog Post
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Add/Edit Employee Form */}
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="employee-name">Full Name</Label>
-                    <Input
-                      id="employee-name"
-                      value={editingEmployee ? editingEmployee.name : newEmployee.name}
-                      onChange={(e) => {
-                        if (editingEmployee) {
-                          setEditingEmployee({...editingEmployee, name: e.target.value});
-                        } else {
-                          setNewEmployee({...newEmployee, name: e.target.value});
-                        }
-                      }}
-                      placeholder="Enter full name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="employee-role">Role</Label>
-                    <Input
-                      id="employee-role"
-                      value={editingEmployee ? editingEmployee.role : newEmployee.role}
-                      onChange={(e) => {
-                        if (editingEmployee) {
-                          setEditingEmployee({...editingEmployee, role: e.target.value});
-                        } else {
-                          setNewEmployee({...newEmployee, role: e.target.value});
-                        }
-                      }}
-                      placeholder="e.g., Sales Manager"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="employee-phone">Phone Number</Label>
-                    <Input
-                      id="employee-phone"
-                      value={editingEmployee ? editingEmployee.phone : newEmployee.phone}
-                      onChange={(e) => {
-                        if (editingEmployee) {
-                          setEditingEmployee({...editingEmployee, phone: e.target.value});
-                        } else {
-                          setNewEmployee({...newEmployee, phone: e.target.value});
-                        }
-                      }}
-                      placeholder="+234 xxx xxx xxxx"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="employee-picture">Picture URL (Optional)</Label>
-                    <Input
-                      id="employee-picture"
-                      value={editingEmployee ? (editingEmployee.picture_url || '') : newEmployee.picture_url}
-                      onChange={(e) => {
-                        if (editingEmployee) {
-                          setEditingEmployee({...editingEmployee, picture_url: e.target.value});
-                        } else {
-                          setNewEmployee({...newEmployee, picture_url: e.target.value});
-                        }
-                      }}
-                      placeholder="https://mivglobal.tech/photos/employee.jpg"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editingEmployee ? (
-                      <>
-                        <Button onClick={updateEmployee} className="flex-1">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Update Employee
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setEditingEmployee(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <Button onClick={createEmployee} className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Employee
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-            </div>
-          </TabsContent>
-
-          {/* Blog Management Tab */}
-          <TabsContent value="blog" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Blog Posts List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Blog Posts ({blogPosts.length})
-                  </CardTitle>
+                  <CardTitle>All Blog Posts</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {blogPosts.map((post) => (
                       <div key={post.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <div>
                             <h3 className="font-semibold">{post.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {post.excerpt || 'No excerpt available'}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
-                                {post.status}
-                              </Badge>
-                              {post.featured && (
-                                <Badge variant="outline">Featured</Badge>
-                              )}
-                              {post.category && (
-                                <Badge variant="outline">{post.category}</Badge>
-                              )}
-                            </div>
+                            <p className="text-sm text-muted-foreground">{post.excerpt}</p>
                           </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button 
-                              variant="outline" 
+                          <div className="flex items-center gap-2">
+                            <Button
                               size="sm"
-                              onClick={() => setEditingBlogPost(post)}
+                              variant={post.published ? "default" : "outline"}
+                              onClick={() => toggleBlogPostStatus(post.id, !post.published)}
                             >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
+                              {post.published ? 'Published' : 'Draft'}
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => deleteBlogPost(post.id)}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                            </Button>
+                            {post.featured && (
+                              <Badge className="bg-gold text-white">
+                                Featured
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          <p>Views: {post.views || 0} • Created: {new Date(post.created_at).toLocaleDateString()}</p>
-                          {post.published_at && (
-                            <p>Published: {new Date(post.published_at).toLocaleDateString()}</p>
-                          )}
+                          {post.category} • {new Date(post.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
+            </>
+          )}
 
-              {/* Add/Edit Blog Post Form */}
+          {activeTab === 'team' && (
+            <>
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    {editingBlogPost ? 'Edit Blog Post' : 'Create New Blog Post'}
-                  </CardTitle>
+                  <CardTitle>Add New Team Member</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="blog-title">Title</Label>
-                    <Input
-                      id="blog-title"
-                      value={editingBlogPost ? editingBlogPost.title : newBlogPost.title}
-                      onChange={(e) => {
-                        const title = e.target.value;
-                        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, title, slug});
-                        } else {
-                          setNewBlogPost({...newBlogPost, title, slug});
-                        }
-                      }}
-                      placeholder="Enter blog post title"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="blog-slug">Slug (URL)</Label>
-                    <Input
-                      id="blog-slug"
-                      value={editingBlogPost ? editingBlogPost.slug : newBlogPost.slug}
-                      onChange={(e) => {
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, slug: e.target.value});
-                        } else {
-                          setNewBlogPost({...newBlogPost, slug: e.target.value});
-                        }
-                      }}
-                      placeholder="blog-post-url"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="blog-excerpt">Excerpt</Label>
-                    <Textarea
-                      id="blog-excerpt"
-                      value={editingBlogPost ? (editingBlogPost.excerpt || '') : newBlogPost.excerpt}
-                      onChange={(e) => {
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, excerpt: e.target.value});
-                        } else {
-                          setNewBlogPost({...newBlogPost, excerpt: e.target.value});
-                        }
-                      }}
-                      placeholder="Brief description of the post"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="blog-content">Content</Label>
-                    <Textarea
-                      id="blog-content"
-                      value={editingBlogPost ? editingBlogPost.content : newBlogPost.content}
-                      onChange={(e) => {
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, content: e.target.value});
-                        } else {
-                          setNewBlogPost({...newBlogPost, content: e.target.value});
-                        }
-                      }}
-                      placeholder="Write your blog post content here..."
-                      rows={8}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="blog-category">Category</Label>
-                      <Input
-                        id="blog-category"
-                        value={editingBlogPost ? (editingBlogPost.category || '') : newBlogPost.category}
-                        onChange={(e) => {
-                          if (editingBlogPost) {
-                            setEditingBlogPost({...editingBlogPost, category: e.target.value});
-                          } else {
-                            setNewBlogPost({...newBlogPost, category: e.target.value});
-                          }
-                        }}
-                        placeholder="e.g., Technology"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="blog-tags">Tags (comma-separated)</Label>
-                      <Input
-                        id="blog-tags"
-                        value={editingBlogPost ? (editingBlogPost.tags?.join(', ') || '') : newBlogPost.tags}
-                        onChange={(e) => {
-                          if (editingBlogPost) {
-                            setEditingBlogPost({...editingBlogPost, tags: e.target.value.split(',').map(t => t.trim())});
-                          } else {
-                            setNewBlogPost({...newBlogPost, tags: e.target.value});
-                          }
-                        }}
-                        placeholder="web, design, development"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="blog-image">Featured Image URL</Label>
-                    <Input
-                      id="blog-image"
-                      value={editingBlogPost ? (editingBlogPost.featured_image || '') : newBlogPost.featured_image}
-                      onChange={(e) => {
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, featured_image: e.target.value});
-                        } else {
-                          setNewBlogPost({...newBlogPost, featured_image: e.target.value});
-                        }
-                      }}
-                      placeholder="https://mivglobal.tech/images/blog-featured.jpg"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center space-x-2">
+                      <label className="block text-sm font-medium mb-2">Full Name</label>
                       <input
-                        type="checkbox"
-                        id="blog-featured"
-                        checked={editingBlogPost ? (editingBlogPost.featured || false) : newBlogPost.featured}
-                        onChange={(e) => {
-                          if (editingBlogPost) {
-                            setEditingBlogPost({...editingBlogPost, featured: e.target.checked});
-                          } else {
-                            setNewBlogPost({...newBlogPost, featured: e.target.checked});
-                          }
-                        }}
+                        type="text"
+                        value={newEmployee.name}
+                        onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="Enter full name"
                       />
-                      <Label htmlFor="blog-featured">Featured Post</Label>
                     </div>
-
-                    <Select
-                      value={editingBlogPost ? editingBlogPost.status : newBlogPost.status}
-                      onValueChange={(value: 'draft' | 'published') => {
-                        if (editingBlogPost) {
-                          setEditingBlogPost({...editingBlogPost, status: value});
-                        } else {
-                          setNewBlogPost({...newBlogPost, status: value});
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {editingBlogPost ? (
-                      <>
-                        <Button onClick={updateBlogPost} className="flex-1">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Update Post
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setEditingBlogPost(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <Button onClick={createBlogPost} className="w-full">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Role</label>
+                      <input
+                        type="text"
+                        value={newEmployee.role}
+                        onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="e.g., CEO, Lead Developer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Phone</label>
+                      <input
+                        type="text"
+                        value={newEmployee.phone}
+                        onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Profile Picture URL</label>
+                      <input
+                        type="url"
+                        value={newEmployee.picture_url}
+                        onChange={(e) => setNewEmployee({ ...newEmployee, picture_url: e.target.value })}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="https://example.com/photo.jpg"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Button onClick={createEmployee} className="w-full">
                         <Plus className="h-4 w-4 mr-2" />
-                        Create Post
+                        Add Team Member
                       </Button>
-                    )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Team Directory</CardTitle>
+                  <CardDescription>
+                    Manage team members and their information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {employees.map((employee) => (
+                      <div key={employee.id} className="border rounded-lg p-4">
+                        {editingEmployee?.id === employee.id ? (
+                          <div className="space-y-3">
+                            <input
+                              type="text"
+                              value={editingEmployee.name}
+                              onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={editingEmployee.role}
+                              onChange={(e) => setEditingEmployee({ ...editingEmployee, role: e.target.value })}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={editingEmployee.phone}
+                              onChange={(e) => setEditingEmployee({ ...editingEmployee, phone: e.target.value })}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                            <input
+                              type="url"
+                              value={editingEmployee.picture_url}
+                              onChange={(e) => setEditingEmployee({ ...editingEmployee, picture_url: e.target.value })}
+                              className="w-full p-2 border rounded text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={updateEmployee}>
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Save
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditingEmployee(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 mb-3">
+                              {employee.picture_url ? (
+                                <img
+                                  src={employee.picture_url}
+                                  alt={employee.name}
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                  <User className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div>
+                                <h3 className="font-semibold">{employee.name}</h3>
+                                <p className="text-sm text-muted-foreground">{employee.role}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                              <Phone className="h-3 w-3" />
+                              <span>{employee.phone}</span>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => setEditingEmployee(employee)}>
+                                <Edit className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => handleDeleteEmployee(employee.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Delete
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

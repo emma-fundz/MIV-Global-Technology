@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,42 +79,66 @@ const ClientDashboard = () => {
 
   const checkAuth = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       // Session gate - check uid before any fetch
       const { data: s } = await supabase.auth.getSession();
       const uid = s?.session?.user?.id;
+      
       if (!uid) {
+        console.log('No session found, redirecting to auth');
         setLoading(false);
-        setError("Not authenticated");
         navigate('/auth');
         return;
       }
 
       setUser(s.session.user);
 
-      // Profile/Client fetch with Promise.all
-      const [{ data: profile }, { data: client }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('user_id', uid).maybeSingle(),
-        supabase.from('clients').select('*').eq('user_id', uid).maybeSingle(),
-      ]);
+      // Fetch profile and client with timeout
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', uid)
+        .maybeSingle();
 
-      // Debug logging
+      const clientPromise = supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      const [{ data: profile }, { data: client }] = await Promise.race([
+        Promise.all([profilePromise, clientPromise]),
+        timeoutPromise
+      ]) as any;
+
       console.log('ClientDashboard fetch results:', { profile, client, uid });
 
-      if (!profile && !client) {
-        setError("Profile not found. We couldn't find your client profile. Please contact support.");
+      // Check if user should be on admin dashboard
+      if (profile?.role === 'admin' || profile?.role === 'team') {
+        console.log('User has admin/team role, redirecting to admin dashboard');
+        navigate('/admin-dashboard');
+        return;
+      }
+
+      if (!client) {
+        setError("We couldn't find your client profile. Please contact support.");
         setLoading(false);
         return;
       }
 
-      if (client) {
-        setClient(client);
-      }
+      setClient(client);
 
       // Get projects
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
         .select('*')
-        .eq('client_id', client?.id);
+        .eq('client_id', client.id);
 
       if (projectsError) {
         console.error('Error fetching projects:', projectsError);
@@ -123,8 +148,8 @@ const ClientDashboard = () => {
 
       setLoading(false);
     } catch (e) {
-      console.error("Dashboard load error:", e);
-      setError("Failed to load profile");
+      console.error("ClientDashboard load error:", e);
+      setError("Failed to load your dashboard: " + (e as Error).message);
       setLoading(false);
     }
   };
@@ -270,6 +295,7 @@ const ClientDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
         {/* Current Plan Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
