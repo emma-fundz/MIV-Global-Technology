@@ -1,3 +1,11 @@
+## [v2.1.14] - 2025-01-03
+- CRITICAL FIX: Removed misleading error cards that were masking real routing issues
+  - Root cause: Generic "Profile not found" and "Error loading dashboard" cards in ClientDashboard.tsx, AdminDashboard.tsx, and Dashboard.tsx were catching and hiding actual errors, preventing proper debugging
+  - Where: `src/pages/Dashboard.tsx`, `src/pages/ClientDashboard.tsx`, `src/pages/AdminDashboard.tsx`
+  - How: Completely removed all generic error cards and retry loops; replaced with direct role-based navigation that throws real errors visibly; eliminated timeout logic and defensive error handling that was masking actual issues; simplified Dashboard.tsx routing to directly navigate based on profile.role without fallbacks
+  - Enhanced: Direct navigation flow - admin/team users go straight to `/admin-dashboard`, all others to `/client-dashboard`; real errors now surface in console and crash visibly for proper debugging instead of showing fake "profile not found" messages
+  - Result: Eliminated the artificial "Error loading dashboard" and "We couldn't find your client profile" messages that were blocking users; actual routing issues now visible for debugging; clean direct navigation without misleading error states
+
 ## [v2.1.13] - 2025-01-03
 - CRITICAL FIX: Resolved infinite loading spinner and "Profile not found" errors in dashboard routing
   - Root cause: Missing `setLoading(false)` calls in error paths, race conditions in Promise handling, and retry logic masking actual errors causing silent failures

@@ -16,69 +16,44 @@ const Dashboard = () => {
 
   const routeToCorrectDashboard = async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       // Session gate - check uid before any fetch
       const { data: s } = await supabase.auth.getSession();
       const uid = s?.session?.user?.id;
       
       if (!uid) {
         console.log('No session found, redirecting to auth');
-        setLoading(false);
         navigate('/auth');
         return;
       }
 
-      // Fetch profile with timeout to determine role
-      const profilePromise = supabase
+      // Direct profile fetch - let real errors surface
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('user_id', uid)
         .maybeSingle();
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 10000)
-      );
+      console.log('Dashboard router results:', { profile, uid, profileError });
 
-      const { data: profile, error: profileError } = await Promise.race([
-        profilePromise,
-        timeoutPromise
-      ]) as any;
-
-      console.log('Dashboard router fetch results:', { profile, uid, profileError });
-
+      // If there's a real error, throw it to expose the actual problem
       if (profileError) {
         console.error('Profile fetch error:', profileError);
-        setError('Failed to load profile: ' + profileError.message);
-        setLoading(false);
-        return;
+        throw new Error(`Profile fetch failed: ${profileError.message}`);
       }
 
-      if (!profile) {
-        console.log('No profile found, defaulting to client dashboard');
-        navigate('/client-dashboard');
-        return;
-      }
-
-      // Route based on role
-      if (profile.role === 'admin' || profile.role === 'team') {
+      // Direct navigation based on role - no fallbacks or error cards
+      if (profile?.role === 'admin' || profile?.role === 'team') {
         console.log('Routing to admin dashboard for role:', profile.role);
         navigate('/admin-dashboard');
       } else {
-        console.log('Routing to client dashboard for role:', profile.role);
+        console.log('Routing to client dashboard - profile:', profile);
         navigate('/client-dashboard');
       }
     } catch (e) {
       console.error("Dashboard routing error:", e);
-      setError("Failed to load dashboard: " + (e as Error).message);
-      setLoading(false);
+      // Let the error surface visibly instead of showing a generic card
+      throw e;
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
   };
 
   if (loading) {
@@ -92,29 +67,7 @@ const Dashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Error Loading Dashboard</CardTitle>
-            <CardDescription>
-              {error}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button onClick={() => { setError(null); setLoading(true); routeToCorrectDashboard(); }} className="w-full">
-              Retry
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="w-full">
-              Logout
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // No error card - let real errors crash visibly for debugging
   return null;
 };
 

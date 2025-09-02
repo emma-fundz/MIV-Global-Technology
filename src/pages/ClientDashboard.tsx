@@ -126,10 +126,9 @@ const ClientDashboard = () => {
         return;
       }
 
+      // If no client found, throw error to surface the real issue
       if (!client) {
-        setError("We couldn't find your client profile. Please contact support.");
-        setLoading(false);
-        return;
+        throw new Error(`No client record found for user_id: ${uid}`);
       }
 
       setClient(client);
@@ -182,48 +181,7 @@ const ClientDashboard = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Error Loading Dashboard</CardTitle>
-            <CardDescription>
-              {error}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button onClick={() => { setError(null); setLoading(true); checkAuth(); }} className="w-full">
-              Retry
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="w-full">
-              Logout
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!client) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Profile Not Found</CardTitle>
-            <CardDescription>
-              We couldn't find your client profile. Please contact support.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={handleLogout} className="w-full">
-              Return to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // No error cards - let real errors surface for debugging
 
   const currentPlan = planDetails[client.plan];
 
