@@ -181,7 +181,10 @@ const ClientDashboard = () => {
     );
   }
 
-  // No error cards - let real errors surface for debugging
+  // Add null check for client before rendering
+  if (!client) {
+    throw new Error("Client data not loaded");
+  }
 
   const currentPlan = planDetails[client.plan];
 
