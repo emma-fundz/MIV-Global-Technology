@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -112,7 +111,7 @@ const AdminDashboard = () => {
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
-    package: 'basic',
+    package: 'basic' as 'starter' | 'basic' | 'standard' | 'premium',
     client_id: '',
     assigned_to: ''
   });
@@ -146,18 +145,27 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
 
+      console.log('AdminDashboard: Starting auth check...');
+
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 10 seconds')), 10000)
+      );
+
       // Session gate - check uid before any fetch
-      const { data: s } = await supabase.auth.getSession();
-      const uid = s?.session?.user?.id;
+      const sessionPromise = supabase.auth.getSession();
+      const { data: sessionData } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+      const uid = sessionData?.session?.user?.id;
       
       if (!uid) {
-        console.log('No session found, redirecting to auth');
+        console.log('AdminDashboard: No session found, redirecting to auth');
         setLoading(false);
         navigate('/auth');
         return;
       }
 
-      setUser(s.session.user);
+      console.log('AdminDashboard: Session found, uid:', uid);
+      setUser(sessionData.session.user);
 
       // Fetch profile with timeout
       const profilePromise = supabase
@@ -166,26 +174,22 @@ const AdminDashboard = () => {
         .eq('user_id', uid)
         .maybeSingle();
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 10000)
-      );
-
       const { data: profile, error: profileError } = await Promise.race([
         profilePromise,
         timeoutPromise
       ]) as any;
 
-      console.log('AdminDashboard fetch results:', { profile, uid, profileError });
+      console.log('AdminDashboard: Profile fetch results:', { profile, uid, profileError });
 
       if (profileError) {
-        console.error('Profile fetch error:', profileError);
+        console.error('AdminDashboard: Profile fetch error:', profileError);
         setError('Failed to load profile: ' + profileError.message);
         setLoading(false);
         return;
       }
 
       if (!profile) {
-        console.log('No profile found, redirecting to client dashboard');
+        console.log('AdminDashboard: No profile found, redirecting to client dashboard');
         setError('Admin profile not found. Redirecting to client dashboard.');
         setTimeout(() => navigate('/client-dashboard'), 2000);
         setLoading(false);
@@ -194,27 +198,32 @@ const AdminDashboard = () => {
 
       // Check admin/team role
       if (profile.role !== 'admin' && profile.role !== 'team') {
-        console.log('User is not admin/team, redirecting to client dashboard');
+        console.log('AdminDashboard: User is not admin/team, redirecting to client dashboard');
         setError('Access denied. Redirecting to client dashboard.');
         setTimeout(() => navigate('/client-dashboard'), 2000);
         setLoading(false);
         return;
       }
 
+      console.log('AdminDashboard: Profile verified, role:', profile.role);
       setProfile(profile);
 
-      // Load all data concurrently
-      await Promise.all([
-        loadClients(),
-        loadProjects(),
-        loadContacts(),
-        loadBlogPosts(),
-        loadEmployees()
+      // Load all data concurrently with timeout
+      await Promise.race([
+        Promise.all([
+          loadClients(),
+          loadProjects(),
+          loadContacts(),
+          loadBlogPosts(),
+          loadEmployees()
+        ]),
+        timeoutPromise
       ]);
 
+      console.log('AdminDashboard: All data loaded successfully');
       setLoading(false);
     } catch (e) {
-      console.error("Admin dashboard load error:", e);
+      console.error("AdminDashboard: Load error:", e);
       setError("Failed to load admin dashboard: " + (e as Error).message);
       setLoading(false);
     }
@@ -286,7 +295,19 @@ const AdminDashboard = () => {
         return;
       }
 
-      setBlogPosts(data || []);
+      // Transform the data to match our BlogPost interface
+      const transformedData: BlogPost[] = (data || []).map(post => ({
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        content: post.content,
+        category: post.category,
+        featured: post.featured,
+        published: post.published, // This matches the interface
+        created_at: post.created_at
+      }));
+
+      setBlogPosts(transformedData);
     } catch (e) {
       console.error('Error loading blog posts:', e);
     }
@@ -320,8 +341,12 @@ const AdminDashboard = () => {
       const { data, error } = await supabase
         .from('projects')
         .insert([{
-          ...newProject,
-          status: 'pending',
+          title: newProject.title,
+          description: newProject.description,
+          package: newProject.package,
+          client_id: newProject.client_id,
+          assigned_to: newProject.assigned_to,
+          status: 'pending' as 'pending' | 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold',
           progress: 0
         }])
         .select()
@@ -355,9 +380,11 @@ const AdminDashboard = () => {
 
   const updateProjectStatus = async (projectId: string, status: string) => {
     try {
+      const validStatus = status as 'pending' | 'planning' | 'in_progress' | 'review' | 'completed' | 'on_hold';
+      
       const { error } = await supabase
         .from('projects')
-        .update({ status })
+        .update({ status: validStatus })
         .eq('id', projectId);
 
       if (error) {
@@ -371,7 +398,7 @@ const AdminDashboard = () => {
       }
 
       setProjects(projects.map(p => 
-        p.id === projectId ? { ...p, status } : p
+        p.id === projectId ? { ...p, status: validStatus } : p
       ));
 
       toast({
@@ -439,7 +466,19 @@ const AdminDashboard = () => {
         return;
       }
 
-      setBlogPosts([data, ...blogPosts]);
+      // Transform the response to match our BlogPost interface
+      const transformedPost: BlogPost = {
+        id: data.id,
+        title: data.title,
+        excerpt: data.excerpt,
+        content: data.content,
+        category: data.category,
+        featured: data.featured,
+        published: data.published,
+        created_at: data.created_at
+      };
+
+      setBlogPosts([transformedPost, ...blogPosts]);
       setNewBlogPost({ title: '', excerpt: '', content: '', category: '', featured: false });
       toast({
         title: "Success",
@@ -874,9 +913,10 @@ const AdminDashboard = () => {
                       <label className="block text-sm font-medium mb-2">Package</label>
                       <select
                         value={newProject.package}
-                        onChange={(e) => setNewProject({ ...newProject, package: e.target.value })}
+                        onChange={(e) => setNewProject({ ...newProject, package: e.target.value as 'starter' | 'basic' | 'standard' | 'premium' })}
                         className="w-full p-2 border rounded-md"
                       >
+                        <option value="starter">Starter</option>
                         <option value="basic">Basic</option>
                         <option value="standard">Standard</option>
                         <option value="premium">Premium</option>
