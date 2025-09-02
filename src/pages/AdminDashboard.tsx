@@ -303,7 +303,7 @@ const AdminDashboard = () => {
         content: post.content,
         category: post.category,
         featured: post.featured,
-        published: post.published, // This matches the interface
+        published: post.published, // Use the correct published boolean field
         created_at: post.created_at
       }));
 
@@ -449,7 +449,7 @@ const AdminDashboard = () => {
         .insert([{
           ...newBlogPost,
           slug,
-          published: false,
+          published: false, // Use published boolean field
           read_time: '5 min read',
           image_url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop'
         }])
@@ -474,7 +474,7 @@ const AdminDashboard = () => {
         content: data.content,
         category: data.category,
         featured: data.featured,
-        published: data.published,
+        published: data.published, // Use the correct published boolean field
         created_at: data.created_at
       };
 
@@ -493,7 +493,7 @@ const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('blog_posts')
-        .update({ published })
+        .update({ published }) // Use published boolean field
         .eq('id', postId);
 
       if (error) {
