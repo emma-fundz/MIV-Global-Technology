@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -304,7 +303,7 @@ const AdminDashboard = () => {
         content: post.content,
         category: post.category,
         featured: post.featured,
-        published: post.published, // Use the correct published boolean field from the database
+        published: post.published_at !== null, // Convert published_at timestamp to boolean
         created_at: post.created_at
       }));
 
@@ -450,7 +449,7 @@ const AdminDashboard = () => {
         .insert([{
           ...newBlogPost,
           slug,
-          published: false, // Use published boolean field that exists in the database
+          published_at: null, // Use published_at field that exists in the database
           read_time: '5 min read',
           image_url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=400&fit=crop'
         }])
@@ -475,7 +474,7 @@ const AdminDashboard = () => {
         content: data.content,
         category: data.category,
         featured: data.featured,
-        published: data.published, // Use the correct published boolean field from the database
+        published: data.published_at !== null, // Convert published_at timestamp to boolean
         created_at: data.created_at
       };
 
@@ -494,7 +493,7 @@ const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('blog_posts')
-        .update({ published }) // Use published boolean field that exists in the database
+        .update({ published_at: published ? new Date().toISOString() : null }) // Use published_at field that exists in the database
         .eq('id', postId);
 
       if (error) {
