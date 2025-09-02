@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import DashboardSidebar from '@/components/DashboardSidebar';
 import { 
   User, 
   Package, 
@@ -24,8 +22,14 @@ import {
   Menu,
   CheckCircle2,
   ArrowUpRight,
-  Plus
+  Plus,
+  Home,
+  FolderOpen,
+  HelpCircle
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface Client {
   id: string;
@@ -55,7 +59,6 @@ const ClientDashboard = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -170,93 +173,81 @@ const ClientDashboard = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
-          <p>Loading your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Add null check for client before rendering
-  if (!client) {
-    throw new Error("Client data not loaded");
-  }
-
-  const currentPlan = planDetails[client.plan];
-
-  return (
-    <div className="min-h-screen bg-muted flex">
-      {/* Sidebar */}
-      <DashboardSidebar 
-        isOpen={sidebarOpen} 
-        onToggle={() => setSidebarOpen(!sidebarOpen)} 
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {/* Top Header */}
-        <div className="bg-background border-b px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold">Welcome back, {client.full_name}!</h1>
-                <p className="text-sm text-muted-foreground">
-                  {client.company_name || 'MIV Client'} • {currentPlan.name} Plan
-                </p>
+  const renderDashboardContent = () => {
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <div className="flex">
+            {/* Mobile sidebar backdrop */}
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
+            
+            {/* Sidebar skeleton */}
+            <div className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen hidden lg:block">
+              <div className="p-6">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-8"></div>
+                <div className="space-y-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Bell className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Logout</span>
-              </Button>
+            
+            {/* Main content skeleton */}
+            <div className="flex-1 p-4 lg:p-8">
+              {/* Mobile header skeleton */}
+              <div className="lg:hidden mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-32"></div>
+                  <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+              
+              <div className="h-10 bg-gray-200 rounded animate-pulse mb-8 w-1/2"></div>
+              
+              {/* Welcome card skeleton */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-1/3"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
+              </div>
+              
+              {/* Stats cards skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Projects section skeleton */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-1/4"></div>
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-4">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-3 w-2/3"></div>
+                      <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      );
+    }
 
-        {/* Main Content Area */}
-        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto">
-          {/* Quick Setup Card */}
-          <Card className="border-2 border-accent/20 bg-gradient-to-r from-accent/5 to-background">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold mb-2">Take the first step towards your success</h2>
-                  <p className="text-muted-foreground mb-4">
-                    Start your project brief to get your business transformation underway.
-                  </p>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Start Your Project Brief
-                  </Button>
-                </div>
-                <div className="hidden sm:block">
-                  <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="h-8 w-8 text-accent" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    if (!client) {
+      throw new Error("Client data not loaded");
+    }
 
+    const currentPlan = planDetails[client.plan];
+
+    return (
+      <div className="space-y-6">
         {/* Current Plan Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
@@ -483,8 +474,227 @@ const ClientDashboard = () => {
               </Button>
             </CardContent>
           </Card>
-         </div>
         </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile Sidebar */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="sm" className="lg:hidden fixed top-4 left-4 z-50 bg-background border shadow-sm">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <div className="flex h-full flex-col bg-background">
+            {/* Mobile Header */}
+            <div className="flex h-16 items-center border-b px-4">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/lovable-uploads/7dbec63c-b4f2-4c1e-bfc4-c7fd0dff4d18.png" 
+                  alt="MIV" 
+                  className="h-8 w-8"
+                />
+                <div>
+                  <h2 className="text-lg font-semibold">Client Portal</h2>
+                  <p className="text-xs text-muted-foreground">MIV Growth Hub</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Navigation */}
+            <ScrollArea className="flex-1 px-3 py-4">
+              <nav className="space-y-2">
+                <Button variant="secondary" className="w-full justify-start gap-3 h-10">
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+                  <FolderOpen className="h-4 w-4" />
+                  <span>My Projects</span>
+                </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Messages</span>
+                </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+                  <CreditCard className="h-4 w-4" />
+                  <span>Billing</span>
+                </Button>
+                <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+                  <HelpCircle className="h-4 w-4" />
+                  <span>Support</span>
+                </Button>
+              </nav>
+            </ScrollArea>
+
+            {/* Mobile Footer */}
+            <div className="border-t p-3">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex w-64 bg-background border-r flex-col">
+        <div className="flex h-16 items-center border-b px-4">
+          <div className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/7dbec63c-b4f2-4c1e-bfc4-c7fd0dff4d18.png" 
+              alt="MIV" 
+              className="h-8 w-8"
+            />
+            <div>
+              <h2 className="text-lg font-semibold">Client Portal</h2>
+              <p className="text-xs text-muted-foreground">MIV Growth Hub</p>
+            </div>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1 px-3 py-4">
+          <nav className="space-y-2">
+            <Button variant="secondary" className="w-full justify-start gap-3 h-10">
+              <Home className="h-4 w-4" />
+              <span>Dashboard</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+              <FolderOpen className="h-4 w-4" />
+              <span>My Projects</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+              <MessageSquare className="h-4 w-4" />
+              <span>Messages</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+              <CreditCard className="h-4 w-4" />
+              <span>Billing</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10">
+              <HelpCircle className="h-4 w-4" />
+              <span>Support</span>
+            </Button>
+          </nav>
+        </ScrollArea>
+
+        <div className="border-t p-3">
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 h-10 text-red-600 hover:text-red-700 hover:bg-red-50"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <div className="flex-shrink-0 h-16 bg-background border-b flex items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <div className="lg:hidden w-10"></div> {/* Spacer for mobile menu button */}
+            <div>
+              <h1 className="text-xl font-bold">Welcome back, {client?.full_name}!</h1>
+              <p className="text-sm text-muted-foreground hidden sm:block">
+                {client?.company_name} • {planDetails[client?.plan || 'free'].name} Plan
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="relative">
+              <Bell className="h-4 w-4" />
+              <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500"></span>
+            </Button>
+            <Button variant="ghost" size="sm" className="hidden sm:flex">
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>{client?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Quick Actions - Mobile Optimized */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Plus className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">New Project</p>
+                        <p className="text-xs text-muted-foreground">Start something</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Contact Support</p>
+                        <p className="text-xs text-muted-foreground">Get help</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <ArrowUpRight className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Upgrade Plan</p>
+                        <p className="text-xs text-muted-foreground">More features</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Calendar className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Schedule Call</p>
+                        <p className="text-xs text-muted-foreground">Book meeting</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Rest of the dashboard content... */}
+              {renderDashboardContent()}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
