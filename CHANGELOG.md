@@ -1,3 +1,44 @@
+## [2025-08-26] - Dashboard Access & Routing Bug Fix
+
+### 🐛 Issue
+- Users were unable to access dashboards after signing in.
+- Infinite spinner ("Loading your dashboard…") and "Profile not found" errors.
+- UI error card masked real error stack traces, preventing debugging.
+- Admins were being incorrectly redirected to client dashboards.
+
+### 🔍 Investigation
+- Reviewed Supabase role-based routing logic in dashboard components.
+- Tested SQL role promotion queries; confirmed roles updated correctly in database.
+- Audited `ClientDashboard.tsx` and `AdminDashboard.tsx` for loading state bugs.
+- Found that masking error cards prevented visibility of the true error messages.
+- Discovered missing `setLoading(false)` calls and faulty early returns causing infinite loading.
+- Identified infinite recursion in RLS policies on profiles table preventing data access.
+
+### 🔧 Resolution
+- Removed masking error card to surface actual error stack traces.
+- Fixed dashboard data-fetching logic and error boundaries:
+  - Added `setLoading(false)` across all code paths.
+  - Corrected role-based navigation and retry loop behavior.
+  - Fixed infinite recursion in profiles table RLS policies using security definer function.
+- Updated navbar to dynamically show Dashboard link post-login.
+- Admin dashboard now correctly loads for admins; client dashboard loads for clients.
+- Created proper security definer function to avoid RLS recursion issues.
+
+### 📂 Files Modified
+- `src/pages/ClientDashboard.tsx`
+- `src/pages/AdminDashboard.tsx`
+- `src/components/Header.tsx`
+- `supabase/migrations/` (RLS policy fixes)
+
+### ✅ Validation
+- Tested login flow for multiple users (client/admin roles).
+- Dashboards fully accessible with no infinite loading spinners.
+- Role-based routing confirmed functional and secure.
+- RLS policies no longer cause infinite recursion.
+- Error messages now surface properly for debugging.
+
+---
+
 ## [v2.1.14] - 2025-01-03
 - CRITICAL FIX: Removed misleading error cards that were masking real routing issues
   - Root cause: Generic "Profile not found" and "Error loading dashboard" cards in ClientDashboard.tsx, AdminDashboard.tsx, and Dashboard.tsx were catching and hiding actual errors, preventing proper debugging
